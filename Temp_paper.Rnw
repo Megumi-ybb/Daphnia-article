@@ -1,0 +1,1209 @@
+\documentclass{article}
+\usepackage[english]{babel}
+
+% Set page size and margins
+% Replace `letterpaper' with`a4paper' for UK/EU standard size
+\usepackage[a4paper,top=3cm,bottom=3cm,left=4cm,right=4cm,marginparwidth=1cm]{geometry}
+
+% Useful packages
+\usepackage{amsmath}
+\usepackage{graphicx}
+\usepackage[colorlinks=true, allcolors=blue]{hyperref}
+\usepackage{caption}
+\usepackage{subcaption}
+\usepackage{placeins}
+\usepackage{hyperref}
+\usepackage{hyphenat}
+\usepackage{url}
+\usepackage{enumerate}
+\usepackage{natbib}
+\bibliographystyle{plain}
+\usepackage{hyphenat}
+\title{
+% Fitting Mechanistic Modeling on Panel Data with PanelPOMP Framework\\
+Analysis of Panel Data via Mechanistic Model in PanelPOMP Framework\\
+\large A Thesis Submitted in Partial Fulfillment of Bachelor of Science in (Honor) Data Science at the University of Michigan
+}
+\author{BO YANG\\
+\large Thesis Advisor\\
+\large Professor Edward Ionides\\
+\large Professor Aaron King\\
+\large Department of Statistics, University of Michigan}
+\date{Apr 2023}
+\linespread{1.25}
+\usepackage{Sweave}
+\begin{document}
+
+
+
+\maketitle
+
+<<Setup, include=FALSE,echo=FALSE,results='hide'>>=
+library(ggplot2)
+library(plyr)
+library(reshape2)
+library(magrittr)
+library(foreach)
+library(readxl)
+library(doParallel)
+registerDoParallel(cores=36)
+library(pomp)
+library(panelPomp)
+stopifnot(packageVersion("pomp") >= "1.4.7")
+
+set.seed(0001)
+
+lum_data = read_excel("~/Desktop/Honor_thesis/Report_Rnw_code/Mesocosmdata.xlsm")
+lumNoPara <- lum_data[1:100, ] 
+lumNoPara <- subset(lumNoPara, select = c(rep, day, lum.adult))
+lumNoPara <- lumNoPara[100: 1, ]
+
+lumNoPara$day = (lumNoPara$day - 1) * 5 + 7
+data_lum = list()
+trails = c("A","B","C","D","E","F","G","H","I","J")
+for (i in 1: length(trails)){
+  data_lum[[i]]=subset(lumNoPara, select = c("day", "lum.adult"),
+                   lumNoPara$rep == trails[i])
+}
+
+Mesocosm_data = read_excel("~/Desktop/Honor_thesis/Report_Rnw_code/Mesocosmdata.xls")
+dentNoPara <- Mesocosm_data[1:100, ]
+dentNoPara <- subset(dentNoPara, select = c(rep, day, dent.adult))
+dentNoPara <- dentNoPara[100: 1, ]
+dentNoPara$day = (dentNoPara$day - 1) * 5 + 7
+data_dent = list()
+trails = c("A","B","C","D","E","F","G","H","I","J")
+for (i in 1: length(trails)){
+  data_dent[[i]]=subset(dentNoPara, select = c("day", "dent.adult"),
+                   dentNoPara$rep == trails[i])
+}
+@
+\begin{abstract}
+\linespread{1}
+
+In ecological research, panel data is a typical format  of data to record various statistics. The panel data comprises multi-magnitude time series data \cite{8}. As a result of its high dimension, panel data analysis presents significant difficulties. In the meantime, mechanistic modeling is an attractive yet difficult issue in ecological research. Mechanistic models enable quantitative analysis, which provides a deeper understanding of the latent process of the dynamic system, and provide inference and prediction based on panel data. However, it is limited by the non-Gaussian nature of the vast majority of ecological data. The objective of this study is to showcase the practicality and advancement of mechanistic model development for ecological panel datasets using the panelPOMP structure and the panel iterated filtering optimization approach (PIF). PIF in the research process is used as a probability maximization and parameter estimation technique. We choose two classical models: logistic growth model and Lotka-Volterra model as an example to interpret the validity of mechanistic models. After fitting two models mentioned above on the Daphnia panel data from the research group of Searle et al. \cite{6}, which includes 10 independent time series with 10 data points in each unit, we apply PIF to get the parameter swarms that result in the lowest Akaike information criterion (AIC) in different models. After comparing the AIC of each model, the result demonstrates that the Lotka-Volterra model has the lowest AIC, indicating that alga, which is the Daphnia's prey, has a substantial impact on the population dynamics of each species of Daphnia. Throughout the panel data examination, we illustrate the ability of a panelPOMP framework to tackle the complex nature of panel data analysis, emphasizing its capacity to provide meaningful explanations and in-depth understanding of latent processes not captured by existing data. Nevertheless, discussion on the limitations and interpretations of mechanistic models in dealing with ecological data will be included.
+
+\end{abstract}
+
+\newpage
+
+\linespread{1.25}
+\section{Introduction}
+
+Ecological experiments contain many elements or processes that are difficult to observe, models that can describe both observable and unobservable processes to explain the whole ecological experiment are necessary. As a mathematical description of the elements forming a system, mechanistic modeling can describe the mutual interactions between elements in the system and their interactions with the environment \cite{7}. Utilizing the established process, they elucidate the actions of hidden mechanisms \cite{2}. The purpose of mechanistic modeling in ecology involves employing mathematical models to depict the development and interaction of dynamic systems. This quantitative tool allows researchers to evaluate the explanatory potential of various conceptual models and measure the magnitude of pertinent parameters. Mechanistic modeling has been widely employed in social sciences, industrial engineering, and physics for an extended period. Improved computational capabilities now make it more effective. Traditional time series analysis offers limited explanatory power due to the nonstationary, nonlinear, and stochastic nature of ecological information. Despite the creation of theoretical models for the data, connecting theories with data continues to be a challenging task. As a result, ecological mechanical modeling cannot solve most of the problems on a wide scale, but rather, only a limited range of the problems \cite{2}. 
+
+Panel data, sometimes referred to as longitudinal data, is composed of multiple time series. Each of these time series, which may be multivariate, contains a series of observations collected from a separate entity \cite{1}. In ecology, panel data is a traditional data form that researchers gather to mitigate the impact of random variations throughout experiments, so that it can more accurately measure changes in experimental objectives and control the variables needed to achieve experimental goals. Due to the non-linear characteristics of ecological data, the analysis of panel data entails a high-dimensional structure. Such features diminish the explanatory power of traditional time series analysis and certain Monte Carlo inference techniques. The goal of this study is to investigate the practicality of employing mechanistic models on ecological panel data using the panelPOMP structure.
+
+The PanelPOMP approach modifies the partially observable Markov Process model to accommodate panel data by constructing a POMP model for each individual component. This method enables the determination of whether the parameters within the selected mathematical model are shared or distinct throughout the panel, by computing the highest log likelihood for all potential combinations through the use of panel iterated filtering. Stemming from iterated filtering \cite{4} applied to a singular nonlinear stochastic time series, panel iterated filtering not only filters within each series but also cycles across the panel to achieve the best likelihood. This enables the application of mechanistic models to panel data while preserving its intricate dimensionality.
+
+In this research, we will show the advancement of the panelPOMP model by analyzing the Daphnia panel data generated in the experiment of Searle et al. \cite{6}. The research group of Searle et al. collected panel data on the population densities of different species of Daphnia under different conditions, and interpret how invasive Daphnia species (\textit{lumholtzi}) affect the response of native Daphnia species (\textit{dentifera}) to parasites with panel data \cite{6}. In their lab experiment, they generated standard ecological panel data featuring various independent trials under the same experimental conditions, with each consisting of a brief, nonlinear, and nonstationary time series. Conventional mechanistic theories cannot directly interpret these observations. Utilizing the panelPOMP approach allows for the combination of theoretical models and empirical data, enabling the extraction of the comprehensive information found in each individual time series.
+
+
+For a more in-depth examination of the concealed processes in the panel data, this research incorporates two classic ecological models - the Logistic Growth model and the Lotka-Volterra model - within the panelPOMP framework. After applying both models to the Daphnia panel data, the maximum log-likelihood and best parameter estimates are determined via an iterative filtering approach. These findings are subsequently compared to discover a more accurate and appropriate model for the given data. The superior performance of the Lotka-Volterra model implies that the population density of alga \textit{Ankistrodesmus falcatus} \cite{6}, which is Daphnia's prey, impact the dynamics of both species of Daphnia. It is worth noting that the population density of alga is neither observable nor recorded in the experiment. That implies the mechanistic models under panelPOMP potentially better explain the latent process and show the importance of unobservable processes.
+
+
+Our objective is to evaluate the explanatory capabilities of two traditional ecological models when applied to the Daphnia panel data, and to estimate the parameter sets for a more accurate depiction of the hidden mechanisms within the ecological system. By analyzing Daphnia panel data, we hope to show the limitations and interpretations of mechanistic models in dealing with ecological data. Additionally, the later section will further discuss how the panelPOMP framework and PIF contribute to overcoming the inherent challenges associated with fitting ecological models.
+
+
+\section{Data description}
+\subsection{Daphnia-alga Data}
+
+Searle and colleagues conducted two experiments to investigate the interaction between native and invasive Daphnia species and a parasitic fungus called \textit{Metschnikowia bicuspidate} \cite{6}. The first experiment was an individual-level study that compared the host competence of the two Daphnia species. The second experiment was a mesocosm experiment that examined the community-level species interaction and the role of population density in disease patterns. The mesocosm experiment involved six different treatments, including both single-species and mixed-species treatments, with and without parasites. The experiment was conducted indoors, with 45 Daphnia added to each 15L COMBO media at the start of the four single-species treatments and 10 invasive and 35 host species added in the treatments of mixed-species. The same treatment will be repeated for ten times, and samples were taken every five days for 52 days after the experiment began. The experiment also refills food by adding $2.0 \times 10^7$ cells of alga \textit{falcatus} twice a week (adding $1.3 \times 10^6$ cells $L^{-1}$). And on the timing of sampling, 1 liter COMBO solution was chosen as a sample for each of the 10 units. The genus, disease status, generation stage, and sex of each individual were documented, and the temperature in the lab was kept constant at 23.27℃ (SE $\mp$ 0.2) with a 16L:8D photoperiod and all the other conditions remained the same for all units during the experiment time.
+
+
+
+In the analysis of this dataset, our attention is directed towards the interplay between the Daphnia species (Daphnia \textit{dentifera} and Daphnia \textit{lumholtzi}) and their surroundings in the absence of parasites. Specifically, we analyze a panel data consisting of ten independent time series representing the population density of \textit{dentifera} adults. These observations were gathered simultaneously at ten time points, as shown in Figure 1 and 2, and offer the opportunity to evaluate mechanistic models and evaluate the relationship between alga and Daphnia dynamics.\\
+
+
+\begin{figure}[h]
+  % \includegraphics[width=\linewidth]{data_pic.png}  
+<<Dent_density, echo=FALSE, fig.height=5>>=  
+ggplot(dentNoPara,aes(x=day,y=dentadult))->ggp
+ggp + 
+  geom_line(data=dentNoPara,aes(x=day,y=dent.adult)) + 
+  facet_wrap(~rep,scales="free")+labs(y = "Daphnia dentifera density")
+@
+
+  \caption{Data visulization for Daphnia dentifera: Ten replications of Daphnia population density panel}
+  \label{figure 1}
+\end{figure}
+
+
+\begin{figure}
+  % \includegraphics[width=\linewidth]{lum.png}
+  <<Lum_density2, echo=FALSE, fig.height=5>>=
+  ggplot(lumNoPara,aes(x=day,y=lumadult))->ggp
+ggp + 
+  geom_line(data=lumNoPara,aes(x=day,y=lum.adult)) + 
+  facet_wrap(~rep,scales="free")+labs(y = "Daphnia lumholtzi density")
+@  
+  \caption{Data visulization for Daphnia dentifera: Ten replications of Daphnia population density panel}
+  \label{figure 2}
+\end{figure}
+
+
+\newpage
+
+\section{Methodology}
+        
+\subsection{Partially Observed Markov Processes}
+
+Frequently, we lack a comprehensive understanding of the underlying mechanisms that drive the evolution of a natural system. For example, the precise number of individuals who are exposed to a disease or the density of alga at any given time is typically unknown. To address these issues of missing information, we can utilize partially observed Markov (POMP) models. These models combine both latent and observable processes which are reliant on each other.
+
+  
+With the random variables $Y_{0:N}$ which are the observable states process, the measurement model is $f_{Y_n|X_n}(y_n|x_n)$, and the collected data $y_{0:N}$ are observations of this process. We suppose random variables $X_{0:N}$ represent the latent states, where $X_0$ represents the initial state of the latent process, $f_{X|X_{n-1}}(x_n|x_{n-1})$. We assume that each $Y_n$ depends only upon the latent process at time $n$, $X_n$, and is conditionally independent of the other variables representing the measurement and latent processes, $Y_{n-1}$ and $X_{n-1}$, where $1 \leq n$. Together, $X_{0:N}$ and $Y_{0:N}$ form our POMP model.
+
+\subsection{Likelihood of models and PIF}
+
+In statistical inference challenges, likelihood frequently serves as the basis for estimating parameters and selecting models. Considering a model parameterized by vector $\theta$ within the $m$-dimensional parameter space $\Theta_m$, the likelihood function represents the combined probability density of the dataset, $y_{1:N}$, at $\theta$:
+        \begin{equation}
+        \mathcal{L}(\theta) = f_{Y_{1:N}}(y_{1:N}; \theta)
+        \end{equation}
+The goal is to get the estimation of $\theta$, $\hat{\theta}$ that maximizes the likelihood function $\mathcal{L}(\hat{\theta})$, or log-likelihood function $\mathbf{\ell}(\hat{\theta})$.
+
+
+An ecological model's effectiveness in tracking disease spread hinges on its capability to predict cases or incidence rates. This capability is inherently tied to our trust in the model's precision in forecasting and our grasp of the temporal changes in latent states. As a result, we encounter two interrelated issues: ascertaining the distribution of $X_{n}$ at time $n$ based on $y_{1:n}$, and pinpointing parameter values, $\hat{\theta}$, that maximize the data likelihood. These processes are commonly respectively concluded as the filtering process and the inference process.
+
+Working with POMP models can prove difficult due to the complexity of formulating both the likelihood function and transition density in intricate settings. To address this issue, several techniques have been devised, including the particle filter. Utilizing the particle filter method, it is only necessary to supply data, initial density simulators, single time-step transition density simulators for the latent process, and an evaluator for the observation process density reliant on the hidden process in order to achieve maximum likelihood estimates.
+
+
+To implement the particle filter, we start by initializing $M$ particles at time 1, where $\{ X_1^m; m \in 1:M \}$. All with the required latent state detail and a vector of parameter values, $\theta$. As a result, for every time step n, where $n \in $ [$N$], we advance the each particle by doing the one-step random walk based on transition density, resulting in a set of particles that represents the prediction distribution at time n, which can be represented as $f_{X_n|X_{n-1}}(\cdot | X_{n-1}^m; \theta)$. Next, we assign weights to the particles based on the measurement density to obtain an ensemble that represents the filtering distribution at time n, where the new weight is calculated via $w_{n,m} = f_{Y_n|X_n}(y_n | x_n^m)$. Finally, we reassign the particles based on their weights to generate a new set of particles that represents the filtering distribution, which can then be used to estimate model parameters swarm based on the maximum likelihood \cite{5}. The particle filter is particularly useful in situations where both the likelihood function and transition density are difficult to calculate analytically.
+
+
+As we know, the measurement process variables are mutually independent. In the mean time, the latent process states are dependent to one other. We also notice that the weight we assign to the particles will vary among different particles, which makes the calculation hard. As M to be large enough, we may approximate the weight of each particle to be the mean value of the to calculate the log-likelihood. Based on such fact, we can summarize as following:
+         \begin{flalign}
+          \mathcal{L}(\theta) &= f_{Y_{1:n}}(y_{1:N}; \theta) \\
+         & = \prod_{n=1}^N f_{Y_{n} | Y_{1:n-1}}(y_n | y_{n-1}; \theta) \\
+         & = \prod_{n=1}^N f_{Y_n | X_n}(y_n | x_n ; \theta)\\
+         & \approx \prod_{n=1}^N \frac{1}{M} \sum_{m = 1}^M f_{Y_n|X_n}(y_n | x_n^m) 
+         \end{flalign}
+
+The particle filter technique offers a straightforward approach for estimating the likelihood of data in relation to a model and approximating the latent process variable's distribution at a specific time based on the available observations \cite{3}. The Monte Carlo technique enables us to approximate the conditional likelihood using the weight assigned to each particle. This is a useful tool for analyzing complex models with partially observed Markov processes, as it simplifies the estimation process for the distribution of latent variables and the likelihood of the data.
+
+  
+\subsection{PanelPomp Framework}
+In a panel data set containing K independent time series, K entities are represented by the symbols $1,2,...,K$, with N periodic observations collected for each unit $(t_1,t_2,...,t_{N})$. A stochastic observable process, denoted as $y_{k,1},...,y_{k,N}$, generates these measurements. PanelPOMP is an adaptation of the partially observable Markov process (POMP) tailored for panel data analysis \cite{1}. It entails developing a POMP model for each entity and employing the Panel Iterated Filtering (PIF) method to achieve the highest log-likelihood. Based on the POMP framework, a process and a measurement model were devised for every time series unit \cite{4}. The measurement model elucidates how the potential real population density generates observable time series data with the measurement density $f_{Xn|Xn-1}(x_n|x_{n-1};\theta)$, while the process model portrays the actual population's dynamics through the one-step transition density $f_{Xn|Xn-1}(x_n|x_{n-1};\theta)$. Ultimately, the joint density equals the initial density multiplied by the product of the process and measurement models for each state. This study will apply and examine three ecological models for a single-species experimental container without parasites: a logistic model, a Lotka-Volterra model with sufficient predator food supply, and a Lotka-Volterra model incorporating food supply management.
+
+
+\subsection{Benchmarks}
+We will choose two different models as benchmarks for this research. The three benchmarks will be: logistic model by Searles et al. \cite{6}, Lotka-Volterra model with enough food supply for predator.
+\subsubsection{Logistic Model}
+First, we can check the logistic model be Searles et al., 
+    \begin{flalign}
+    & dS=\left(r + \zeta \right)S\left(1-\frac{S}{K}\right) \cdot dt-\delta S \cdot dt\\
+    &\zeta  \sim N\left(0, \sigma_{G}\right)
+    \end{flalign}
+    This model contains one state variable Daphnia population density(S) and 2 parameters: $r, K$ and $\sigma_{G}$. Among those parameters, $r$ represents the growth rate of Daphnia. $K$ is the carrying capacity of this ecosystem in terms of density for certain species of Daphnia.$\delta$ denotes the sampling rate in the experiment. In order to minimize the dimension of parameters, we fixed the sample rate $\delta$ as a constant equal 0.013 as in Searles et al. \cite{6}. $\zeta$ is a noise term added to population growth to allows for random variation in the dynamic. In this case, we assure $\zeta$ follows a Normal distribution with 0 mean and a standard deviation of $\sigma_{G}$.
+
+The model encompasses a single state variable, Daphnia population density (S), and three parameters: $r, K$, and $\sigma_{G}$. The parameter $r$ signifies the Daphnia growth rate, while $K$ denotes the ecosystem's carrying capacity in terms of density for specific Daphnia species. The sampling rate in the experiment is represented by $\delta$. To reduce parameter dimensionality, we set the sample rate $\delta$ as a constant equal to 0.013, following Searles et al. \cite{6}. The noise term $\zeta$ is incorporated into the population growth to account for random fluctuations in the dynamic. In this instance, we ensure that $\zeta$ adheres to a normal distribution with the mean of 0 and the standard deviation to be $\sigma_{G}$.
+
+
+
+The logistic model is a well-known ecological model that is commonly used to describe the population growth of a species under limited conditions, such as space or food availability. Given that the population growth curve appears to follow a similar pattern to the logistic model, we attempt to fit the data to this model. As the population density (S) approaches the carrying capacity (K), the rate of population growth decreases and becomes zero when S equals K. If S exceeds K, the population will decline. Moreover, as S increases, the noise in the data also increases, which will be accounted for by the model.
+    
+Assuming that the logistic model fits the data accurately, it would imply that the population has sufficient food and that the limiting factor is the space available for Daphnia. However, if the model does not fit the data well, then we should consider the possibility of alga, which serves as the food source for Daphnia, being a significant factor affecting population dynamics.
+
+    
+\subsubsection{Lotka-Volterra model with enough food supply}
+
+Second, we will check the Lotka-Volterra model with enough food supply \cite{9}: 
+\begin{flalign}
+    & dF =\left(\alpha + \zeta_F \right) F\left(1-\frac{F}{k_f}\right) \cdot dt-\beta F S \cdot dt  \\
+    & dS= \left(\theta+ \zeta_S \right) S F \cdot dt-\gamma S \cdot dt- \delta S \cdot dt \\
+     &\zeta_F  \sim N\left(0, \sigma_F\right) \\
+     &\zeta_S  \sim N\left(0, \sigma_S \right) 
+    \end{flalign}
+    This model includes 8 parameters: $\gamma,\alpha,\sigma_F,\sigma_S,\theta,\beta,\delta$ and $k_f$. Among those parameters, $\alpha$ represents the rate of growth of algae. $k_f$ shows the carrying capacity of algae in each bucket. $\beta$ is the consumption rate of algae by certain species of Daphnia, $\theta$ shows the rate of growth of Daphnia with certain type of food and $\gamma$ is the rate of death of certain species of Daphnia. Same as the logistic model, we treat $\delta$ as a constant equal to 0.013 according to the experimental settings as in Searles et al. \cite{6}. $\zeta_F$ and $\zeta_S$ are noise terms of algae (F) growth and Daphnia (S) growth in order to show randomness of the dynamic system. They are generated from a normal distribution with 0 mean, and $\sigma_F, \sigma_S$ to be the variance respectively. It is worth noting that whenever the density of algea equals zero, we will reset the density of alga back to 1000 as a way to ensure the adequacy of food.
+
+Using the Lotka-Volterra model with enough food supply, we can investigate how the population dynamics of Daphnia are influenced by the availability of sufficient algae. If the data are adequately explained by this alternative hypothesis, it can be concluded that the density of algae plays a significant role in Daphnia population dynamics rather than just being a simple environmental factor, as other conditions may not affect this treatment. On the other hand, if the model does not fit the data well, it's possible that the algae supply is not always sufficient. Therefore, it may be necessary to test the Lotka-Volterra model with food supply management, which assumes a limited supply of algae.
+
+\subsection{Lotka-Volterra model with food supply management}
+
+In the model, We denote the density of alga as F ($10^5$ cells per liter), and density of Daphnia as S (individuals per liter), and total amount of Daphnia that is sampled out from the bucket as M(individuals per liter). The model can be expressed as below:
+          \begin{flalign}
+          & dF =\alpha F\left(1-\frac{F}{k_f}\right)\cdot dt+F \cdot \zeta_F \cdot dt-\beta F S \cdot dt- \delta F \cdot dt+ \mu \cdot dt \\
+          & dS = \theta S F \cdot dt+S \cdot \mathrm{\zeta_S} -\gamma S \cdot dt - \delta S \cdot dt\\
+          &\zeta_F \sim N \left( 0, \sigma_F \right) \\
+          &\zeta_S \sim N \left( 0, \sigma_S  \right) \\
+          &d M = \delta S \cdot dt
+         \end{flalign}
+
+\subsubsection{Model interpretation}
+In this model, we set the initial condition to be $M = 0, S = 3$ and $F = 16.667$ by Searles et al. Also, we can separate the differential equations in to several parts:
+\paragraph{Alga}
+
+
+The change of the density of alga can be viewed as
+        \begin{flalign}
+        & dF_{birth} = \alpha F\left(1-\frac{F}{k_f}\right) dt+F \cdot \zeta_F dt\\
+        &dF_{cons} = \beta F S dt\\
+        &dF_{spl} = \delta F dt\\
+        &dF_{refill} = \mu dt\\
+        &dF = dF_{birth} - dF_{cons} - dF_{spl} + dF_{refill} 
+        \end{flalign} where $\alpha$ can be viewed as growth rate, $k_f$ can be viewed as the carrying capacity, $\zeta_F$ is the noise term, $\beta$ can be viewed as the consumption rate, which are all unknown parameters. At the same time, $\delta$ and $\mu$ are fixed parameters with $\delta = 0.013$ and $\mu = 0.37$, which implies the food supply rate. We split the change of alga density (dF) into four parts. The equation (17) represents the change of population due to the birth of alga and noise term. While the equation (18) is shows the amount of alga that is consumed by Daphnia, which will make the density decrease. The equation (19) and (20) indicate that change of alga density due to the process of alga refill and sampling. Such four equations explain the processes and causes of the changes in alga population density.
+
+\paragraph{Daphnia}
+
+
+The change of the density of Daphnia can be viewed as
+        \begin{flalign}
+        &dS_{grow} = \theta S F dt+S \cdot \zeta_Sdt\\
+        &dS_{death} = \gamma Sdt\\
+        &dS_{spl} = \delta Sdt\\
+        &dS =  S_{grow} - S_{death} - S_{spl}
+        \end{flalign}where $\theta$ can be viewed as growth rate, $\zeta_S$ is the noise term, $\gamma$ can be viewed as the death rate, which are all unknown parameters. At the same time, $\delta$ is fixed parameters with $\delta = 0.013$. We split the change of Daphnia density (dS) into three parts. The equation (22) represents the change of population due to the birth of Daphnia and noise term. While the equation (23) is shows the amount of alga that is consumed by Daphnia, which will make the density decrease. The equation (24) indicates that change of Daphnia density due to the process of  sampling. Such three equations explain the processes and causes of the changes in Daphnia population density.
+
+    This model includes 9 parameters: $\gamma,\alpha,\sigma_F,\sigma_S,\theta,\beta,\delta, \mu$ and $k_f$. Among those parameters, $\alpha$ represents the rate of growth of algae. $k_f$ shows the carrying capacity of algae in each bucket. $\beta$ is the consumption rate of algae by certain species of Daphnia, $\theta$ shows the rate of growth of Daphnia with certain type of food and $\gamma$ is the rate of death of certain species of Daphnia. Similar to previous Lotka-Volterra model, we treat $\delta$ as a constant equal to 0.013 and $\mu = 0.37$ as a constant that implies the food refilling rate according to the experimental settings as in Searles et al. \cite{6}. $\zeta_F$ and $\zeta_S$ are noise terms of algae (F) growth and Daphnia (S) growth terms in order to show randomness of the dynamic system. They are induced by a normal distribution with 0 mean,and $\sigma_F, \sigma_S$ to be variance respectively. Unlike the previous model, we restricted the food supply. Since we observed a precipitous decline in Daphnia population density in the panel data, we suggest that this may be a dynamic change due to food insufficiency. Based on the experimental manipulations, we treated the food supply rate as a constant $\mu = 0.37 \cdot 10^5$ cells per day.
+
+Using this model, we can investigate how the population dynamics of Daphnia are influenced by the density algae with condition that food may not be sufficient. If the data are adequately explained by this alternative hypothesis, it can be concluded that the density of algae plays a significant role in Daphnia population dynamics and the lack of food is potentially the reason of the precipitous decline in Daphnia population, as other factors may not obviously affect this treatment. On the other hand, if the model does not fit the data well, it's possible that the alga may not be the main reason that lead to the change of population of Daphnia, which means we need to consider other possible factors that can affect the population density of Daphnia.
+
+\subsection{Measurement and Initial condition}
+
+Assessment framework illustrates the technique through which noticeable information is derived from potential real populace concentration. It encompasses obtaining samples from the Daphnia population distribution in this case. As Searles and colleagues \cite{6} describe, on every sampling occasion, 1L of specimen is extracted from a 15L mixture post agitation, and the sampling rate $\delta$ is set to 0.013. Due to the constraint that both Daphnia and algae densities must be non-negative values, the procedure was approached as binomial distributions with the likelihood of success (p) equivalent to the sampling rate ($\delta$) and the totalan count (n) as $S/\delta$ for both logistic growth models and Lotka-Volterra models. For logistic growth models, the assessment framework can be summarized as:
+        \begin{flalign}
+        % &F \sim \operatorname{Poisson}(\lambda = S \times \delta)& \\
+        % &\text { Or } &\\
+        &F \sim \operatorname{binomial}(n=S / \delta, p=\delta), \delta=0.013
+        \end{flalign}
+        
+S represents the actual population concentration, and the near integer (1/$\delta$ * S) signifies the estimated genuine count of adult Daphnia in the 15L medium. F symbolizes the observable specimen resulting from the hidden population density. Given that algae lack noticeable samples from the information, within the Lotka-Volterra pomp framework, we exclusively devised two different measurement models for the Daphnia population. One is to follow the measurement model of logistic growth model since alga is not observable, which potentially we can follow the simpler model. On the other hand, we can view the process of sampling as a Poisson process. Where the rate $\lambda = S \cdot \delta$ represents the average number of Daphnia per liter per sampling time. Hence, two possible assessment frameworks are:
+        \begin{flalign}
+        &F \sim \operatorname{binomial}(n=S / \delta, p=\delta), \delta=0.013 \\
+        &F \sim \operatorname{Poisson}(\lambda = S \times \delta) 
+        \end{flalign}
+
+\section{Results}
+
+Permitting parameters to be either shared or unique leads to varying dimensions for each model. With 10 units in the panel, adding a shared parameter increases the model's dimension by 1, and a specific parameter will add dimensions by 10. We encountered a balance between fitting accuracy and simplicity when selecting models. As a result, we employed the Akaike information criterion (AIC) as a benchmark to compare models while adjusting for dimension. We get the estimation of parameters via searching the maximum log-likelihood using panel iterated filtering and calculated AIC for all models. Tables 5 reveal that the Lotka-Volterra model with parameter $\sigma_S$ to be unit specific and all other parameters to be unit shared offers the best AIC of 970.62 for Daphnia dentifera The lowest AIC of all logistic growth models is 2543.04, which we select k to be unit specific only. While Lotka-Volterra models with enough food supply has the minimum AIC of 2263.51. It is safe to conclude that the new Lotka-Volterra model outperforms both benchmark models in fitting Daphnia panel data, with an AIC advantage of 1292.89 units over the best benchmark AIC. This finding implies that the hidden alga process influences Daphnia population dynamics. Daphnia population density fluctuations primarily stem from the interplay between algae and Daphnia. Additionally, significant noise is generated in the Daphnia population throughout the process within these containers. 
+
+The log-likelihood iteration process is placed in the appendix. We can observe that among the 250 parts, the vast majority of them are approaching a certain upper bound, and among these log-likelihoods, the maximum value will be a reliable one, since it's close enough to the theoretical maximum log-likelihood. Therefore we believe that we have found a suitable enough set of parameters to describe this dynamic process. What's more, we have the mean value of standard error of the estimated log-likelihoods is 0.114, with over 90 percent having standard error less than 1, which is small enough to conclude that we get a reasonable maximum log-likelihood with the estimated parameters swarm. 
+
+Parameter estimates and their units are shown in table 5, 6, and 7in the appendix. $\sigma_S$ vary across the panel while other parameters are constant across units. $\sigma_S$ is the main constraints of Daphnia population dynamics, where  $\sigma_S$ is the noise generated generated in the population of Daphnia. The noise can potentially be generated due to the sampling process. Their variation in different units is probably caused by the different density of algae’s food: higher $\sigma_S$ indicates one unit has potential noise during the process. Level of noise is difficult to control in practice. By affecting the sampling process of Daphnia, they indirectly change the data we used to interpret the performance of Daphnia, resulting in different dynamics across the panel.
+
+\subsection{Simluations}
+
+For the model and parameters swarm that result in the best AIC, we did 20 simulations on each unit of the panel data (Figure 3 and 4). Viewing the figure, almost all simulations capture the data well. And the estimation of parameters swarm used for this simulation is shown below in table 1 and 2.
+
+<<dent_mod, include=FALSE,echo=FALSE,results='hide'>>=
+set.seed(0001)
+
+Mesocosm_data = read_excel("~/Desktop/Final model/Mesocosmdata.xls")
+dentNoPara <- Mesocosm_data[1:100, ]
+dentNoPara <- subset(dentNoPara, select = c(rep, day, dent.adult))
+dentNoPara <- dentNoPara[100: 1, ]
+#Convert sampling date to natural date. Samples are collected every 5 days after the #first 7 days.
+dentNoPara$day = (dentNoPara$day - 1) * 5 + 7
+data = list()
+trails = c("A","B","C","D","E","F","G","H","I","J")
+for (i in 1: length(trails)){
+  data[[i]]=subset(dentNoPara, select = c("day", "dent.adult"),
+                   dentNoPara$rep == trails[i])
+}
+
+dent_rpro <- Csnippet("
+                      double Fbirth, Fpred, Fspl, Ffill, Sgrow, Sdeath, Sspl;
+                      double noiB, noiG ;
+                      double delta = 0.013; //fraction of volume replaced day-1
+                      
+                      noiB = rnorm(0, sigB * sqrt(dt));
+                      noiG = rnorm(0, sigG * sqrt(dt));
+                      
+                      
+                      //------------F-------------
+                      
+                      Fbirth = F * (alpha) * (1 - F/kf) * dt + F * noiB;
+                      Fpred =  S * F * (Beta * dt);
+                      Fspl = F * (delta * dt);
+                      Ffill = 0.37 * dt;
+                      
+                      //------------S--------------
+                      Sgrow = S * F * (Theta * dt) + S * noiG;
+                      Sdeath = S * (gamma * dt);
+                      Sspl = S * (delta * dt);
+                      
+                      //M is the total Daphnia sample out
+                      M += Sspl;
+                      F += Fbirth - Fpred + Ffill - Fspl;
+                      S += Sgrow - Sdeath  - Sspl;
+
+                      if (S <= 0.0) {
+                        S = 0.0;
+                        error_count += 1;
+                      }
+                      if (F <= 0) {
+                        F = 0;
+                        error_count += 1000;
+                      }
+                      ")
+
+
+
+# Initial state. Assume t0 = day 4
+dent_init = Csnippet("
+                     S = 3; //3= 45/15L
+                     F = 16.667;
+                     M = 0;
+                     error_count = 0;
+                     ")
+
+
+
+dmeas = Csnippet("
+                 double delta = 0.013;
+                 double tol = 1e-18;
+
+                 if (error_count > 0.0) {
+                   lik = log(tol);
+                 } else {
+                   lik = dpois(dentadult,M,give_log);
+                 }
+                 ")
+
+rmeas = Csnippet("
+                 //double delta = 0.013;
+                 dentadult = rpois(M);
+                 ")
+
+pt <- parameter_trans(
+  log = c("alpha", "Beta", "Theta", "gamma", "sigB", "sigG", "kf")
+)
+
+pomplist=list()
+
+#Not sure about the consumption rate of alga 
+parameters = c(0.5, 0.0005,0.03,0.1, 8,0.6,0.3)
+names(parameters) =  c("alpha","Beta", "gamma", "Theta","kf","sigB","sigG")
+
+for (i in 1:10){
+  colnames(data[[i]]) <- c('day', 'dentadult')
+  pomp(data = data[[i]], 
+       times = "day",
+       t0=1,
+       rprocess=euler(dent_rpro,delta.t=1/4),
+       rinit = dent_init,
+       dmeasure = dmeas, 
+       rmeasure = rmeas,
+       partrans = pt, 
+       obsnames = "dentadult",
+       accumvars = c("error_count","M"),
+       paramnames = c("alpha", "Beta", "Theta", "gamma", "sigB", "sigG", "kf"), 
+       statenames = c("S", "error_count", "F","M")
+  ) -> pomplist[[i]]
+  coef(pomplist[[i]])=parameters
+}
+names(pomplist)=paste("u", 1:10,sep = "")
+
+shared_parameter =        c(7.773061e-05  ,2.052644e-01   ,1.790036    ,6.940058e-03  ,1.170719e-01, 0.15)
+names(shared_parameter) = c("Beta","gamma","kf","sigB","alpha", "Theta")
+
+specific_mat = matrix(data = c(rep(0.3, 10)),
+                      nrow = 1, nc = 10, byrow = T,
+                      dim = list(rownames = c("sigG"),
+                                 colnames=c("u1","u2","u3","u4","u5", "u6","u7","u8","u9","u10")))
+
+panelfood = panelPomp(pomplist, shared=shared_parameter,specific = specific_mat)
+
+load("~/Desktop/Honor_thesis/Report_Rnw_code/sigG.RData")
+
+df_mif <- as.data.frame(mif.estimate)
+Beta <- round(df_mif[1,1] * 100000,2)
+gamma <- round(df_mif[2,1] * 10,2)
+kf <- round(df_mif[3,1],2)
+sigF <- round(df_mif[4,1] * 10,2)
+alpha <- round(df_mif[5,1] * 100,2)
+Theta <- round(df_mif[6,1] * 10,2)
+u1<- round(df_mif[7,1] * 10,2)
+u2<- round(df_mif[8,1] * 10,2)
+u3<- round(df_mif[9,1] * 10,2)
+u4<- round(df_mif[10,1] * 10,2)
+u5<- round(df_mif[11,1] * 10,2)
+u6<- round(df_mif[12,1] * 10,2)
+u7<- round(df_mif[13,1] * 10,2)
+u8<- round(df_mif[14,1] * 10,2)
+u9<- round(df_mif[15,1] * 10,2)
+u10<- round(df_mif[16,1] * 10,2)
+@
+
+\FloatBarrier
+\begin{figure}[h!]
+  % \includegraphics[width=\linewidth]{sigG_Thata_simulation.jpg}
+<<Dent_sim, echo=FALSE, fig.height=5>>=  
+coef(panelfood) <- coef(mf[[best]]$mif)
+all_params <- pparams(mf[[best]]$mif)
+
+foreach(u = names(panelfood), .combine = rbind) %do% {
+  unit_model <- unitobjects(panelfood)[[u]]
+  shared <- all_params$shared
+  # unit_specific <- all_params$specific[, u]
+  unit_specific <- list("sigG" = all_params$specific[, u])
+  
+  pomp::simulate(
+    unit_model, 
+    nsim = 20,
+    format = "data.frame",
+    params = c(shared, unit_specific)
+  ) -> sims
+  
+  sims$unit <- u
+  sims
+} -> all_sims
+
+
+data_df <- data[[1]]
+data_df$unit <- "u1"
+for (i in 2:length(data)) {
+  df_unit <- data[[i]]
+  df_unit$unit <- paste0('u', i)
+  
+  data_df <- rbind(data_df, df_unit)
+}
+# all_sims %>%
+#   filter(error_count == 0) -> large_removed 
+
+
+all_sims[all_sims$error_count == 0,] -> large_removed
+
+ggplot() + 
+  geom_line(data = large_removed, aes(x = day, y = dentadult, group = .id), col = 'blue') + 
+  geom_line(data = data_df, aes(x = day, y = dentadult), col = 'red') + 
+  facet_wrap(~unit, scales = "free_y")
+@
+  \caption{Simulations of the Lotka-Voterra model with $\sigma_S$ to be unit specific and all the other  parameters to be shared on each unit of Daphnia dentifera panel data.}
+  \label{figure 3}
+\end{figure}
+
+<<lum_mod, include=FALSE,echo=FALSE,results='hide'>>=
+set.seed(0001)
+
+Mesocosm_data = read_excel("~/Desktop/Final model/Mesocosmdata.xls")
+dentNoPara <- Mesocosm_data[1:100, ]
+dentNoPara <- subset(dentNoPara, select = c(rep, day, dent.adult))
+dentNoPara <- dentNoPara[100: 1, ]
+#Convert sampling date to natural date. Samples are collected every 5 days after the #first 7 days.
+dentNoPara$day = (dentNoPara$day - 1) * 5 + 7
+data = list()
+trails = c("A","B","C","D","E","F","G","H","I","J")
+for (i in 1: length(trails)){
+  data[[i]]=subset(dentNoPara, select = c("day", "dent.adult"),
+                   dentNoPara$rep == trails[i])
+}
+
+dent_rpro <- Csnippet("
+                      double Fbirth, Fpred, Fspl, Ffill, Sgrow, Sdeath, Sspl;
+                      double noiB, noiG ;
+                      double delta = 0.013; //fraction of volume replaced day-1
+                      
+                      noiB = rnorm(0, sigB * sqrt(dt));
+                      noiG = rnorm(0, sigG * sqrt(dt));
+                      
+                      
+                      //------------F-------------
+                      
+                      Fbirth = F * (alpha) * (1 - F/kf) * dt + F * noiB;
+                      Fpred =  S * F * (Beta * dt);
+                      Fspl = F * (delta * dt);
+                      Ffill = 0.37 * dt;
+                      
+                      //------------S--------------
+                      Sgrow = S * F * (Theta * dt) + S * noiG;
+                      Sdeath = S * (gamma * dt);
+                      Sspl = S * (delta * dt);
+                      
+                      //M is the total Daphnia sample out
+                      M += Sspl;
+                      F += Fbirth - Fpred + Ffill - Fspl;
+                      S += Sgrow - Sdeath  - Sspl;
+
+                      if (S <= 0.0) {
+                        S = 0.0;
+                        error_count += 1;
+                      }
+                      if (F <= 0) {
+                        F = 0;
+                        error_count += 1000;
+                      }
+                      ")
+
+
+
+# Initial state. Assume t0 = day 4
+dent_init = Csnippet("
+                     S = 3; //3= 45/15L
+                     F = 16.667;
+                     M = 0;
+                     error_count = 0;
+                     ")
+
+
+
+dmeas = Csnippet("
+                 double delta = 0.013;
+                 double tol = 1e-18;
+
+                 if (error_count > 0.0) {
+                   lik = log(tol);
+                 } else {
+                   lik = dpois(dentadult,M,give_log);
+                 }
+                 ")
+
+rmeas = Csnippet("
+                 //double delta = 0.013;
+                 dentadult = rpois(M);
+                 ")
+
+pt <- parameter_trans(
+  log = c("alpha", "Beta", "Theta", "gamma", "sigB", "sigG", "kf")
+)
+
+pomplist=list()
+
+#Not sure about the consumption rate of alga 
+parameters = c(0.5, 0.0005,0.03,0.1, 8,0.6,0.3)
+names(parameters) =  c("alpha","Beta", "gamma", "Theta","kf","sigB","sigG")
+
+for (i in 1:10){
+  colnames(data[[i]]) <- c('day', 'dentadult')
+  pomp(data = data[[i]], 
+       times = "day",
+       t0=1,
+       rprocess=euler(dent_rpro,delta.t=1/4),
+       rinit = dent_init,
+       dmeasure = dmeas, 
+       rmeasure = rmeas,
+       partrans = pt, 
+       obsnames = "dentadult",
+       accumvars = c("error_count","M"),
+       paramnames = c("alpha", "Beta", "Theta", "gamma", "sigB", "sigG", "kf"), 
+       statenames = c("S", "error_count", "F","M")
+  ) -> pomplist[[i]]
+  coef(pomplist[[i]])=parameters
+}
+names(pomplist)=paste("u", 1:10,sep = "")
+
+shared_parameter =        c(7.773061e-05  ,2.052644e-01   ,1.790036    ,6.940058e-03  ,1.170719e-01, 0.15)
+names(shared_parameter) = c("Beta","gamma","kf","sigB","alpha", "Theta")
+
+specific_mat = matrix(data = c(rep(0.3, 10)),
+                      nrow = 1, nc = 10, byrow = T,
+                      dim = list(rownames = c("sigG"),
+                                 colnames=c("u1","u2","u3","u4","u5", "u6","u7","u8","u9","u10")))
+
+panelfood = panelPomp(pomplist, shared=shared_parameter,specific = specific_mat)
+
+load("~/Desktop/Honor_thesis/Daphnia_alga_model/Invasive_host/One_specific_code/sig_G/sigG_Theta.RData")
+
+df_mif <- as.data.frame(mif.estimate)
+Beta <- round(df_mif[1,1] * 100000,2)
+gamma <- round(df_mif[2,1] * 10,2)
+kf <- round(df_mif[3,1],2)
+sigF <- round(df_mif[4,1] * 10,2)
+alpha <- round(df_mif[5,1] * 100,2)
+Theta <- round(df_mif[6,1] * 10,2)
+u1<- round(df_mif[7,1] * 10,2)
+u2<- round(df_mif[8,1] * 10,2)
+u3<- round(df_mif[9,1] * 10,2)
+u4<- round(df_mif[10,1] * 10,2)
+u5<- round(df_mif[11,1] * 10,2)
+u6<- round(df_mif[12,1] * 10,2)
+u7<- round(df_mif[13,1] * 10,2)
+u8<- round(df_mif[14,1] * 10,2)
+u9<- round(df_mif[15,1] * 10,2)
+u10<- round(df_mif[16,1] * 10,2)
+@
+
+\begin{figure}[h!]
+  % \includegraphics[width=\linewidth]{lum_simulation.png}
+  <<Lum_sim, echo=FALSE, fig.height=5>>=  
+coef(panelfood) <- coef(mf[[best]]$mif)
+all_params <- pparams(mf[[best]]$mif)
+
+foreach(u = names(panelfood), .combine = rbind) %do% {
+  unit_model <- unitobjects(panelfood)[[u]]
+  shared <- all_params$shared
+  # unit_specific <- all_params$specific[, u]
+  unit_specific <- list("sigG" = all_params$specific[, u])
+  
+  pomp::simulate(
+    unit_model, 
+    nsim = 20,
+    format = "data.frame",
+    params = c(shared, unit_specific)
+  ) -> sims
+  
+  sims$unit <- u
+  sims
+} -> all_sims
+
+data_df <- data[[1]]
+data_df$unit <- "u1"
+for (i in 2:length(data)) {
+  df_unit <- data[[i]]
+  df_unit$unit <- paste0('u', i)
+  
+  data_df <- rbind(data_df, df_unit)
+}
+
+all_sims[all_sims$error_count == 0,] -> large_removed
+
+ggplot() + 
+  geom_line(data = large_removed, aes(x = day, y = dentadult, group = .id), col = 'blue') + 
+  geom_line(data = data_df, aes(x = day, y = dentadult), col = 'red') + 
+  facet_wrap(~unit, scales = "free_y")
+@
+  \caption{Simulations of the Lotka-Voterra model with $\sigma_S$ to be unit specific and all the other  parameters to be shared on each unit of Daphnia lumholtzi panel data.}
+  \label{figure 4}
+\end{figure}
+\FloatBarrier
+
+\newpage
+
+\section{Discussion}
+
+
+Seales and colleagues \cite{6} utilized a logistic growth model to depict the population dynamics of Daphnia in the absence of parasites. However, our findings suggest that the density of Daphnia is influenced to some extent by algae, which affects its growth rate. Consequently, it appears that the fluctuations in the density of Daphnia can be attributed to the dynamics of algae, even in the presence of parasites. Further investigation through the application of a Lotka-Volterra model on single-species with parasite treatments and mixed-species treatments may provide additional insights into the impact of algae and parasites on Daphnia, given enough time.
+
+There is a concern with the model fitting since, during simulations, the density of Daphnia occasionally exhibits exponential growth. This may be due to the lack of a parameter restricting the upper limit of Daphnia's density, which is a potential avenue to enhance the model's accuracy in future iterations. However, I chose not to incorporate this parameter into the current model as it maintains both simplicity and relevance. Results indicate that $\sigma_S$ could be the probable source of disparities in data among buckets. As this parameter is not involved in the density change of algae, it is plausible that this noise arises from some ecological process specific to Daphnia, which requires further scrutiny and discussion in future research.
+
+We have demonstrated the applicability of a panelPOMP model for mechanistic modeling in ecological studies using Daphnia panel data. We used panelPOMP to successfully explain the large relationship between Daphnia population density and its food in Searle et al.'s experiment. It is worth noting that we only had 100 data points to explain this phenomenon. In the framework of panelPOMP, we used PIF to reduce the dimensionality of the model quickly, which means that this method can be utilized for the analysis of other high-dimensional data and has the advantage of rapid dimensionality reduction. This approach complements the disadvantages of the Mechanistic model and potentially allows ecologists to try to solve more data analysis problems using the Mechanistic model.
+
+The R package panelPomp, which is based on this model and PIF algorithm developed by Bretó et al.\cite{1}, enables access to latent state variables such as algae, offering a quantitative approach that facilitates parameter estimation, hypothesis testing, and the comparison of different models with or without their influence on the dynamic system. This approach provides scientists with better insight into the contribution of each factor to the whole system and the ability to predict its future state. Furthermore, the package allows for simulations, which serve as a valuable tool for testing the goodness-of-fit of chosen models and parameters. Overall, mechanistic modeling under a panelPOMP framework can yield more information from limited ecological data, increasing the efficiency and accuracy of ecological experiments while reducing cost and resource requirements.
+
+
+
+\newpage
+<<Read_Data, include=FALSE,echo=FALSE,results='hide'>>=
+AIC_two <- function(ll){
+  temp <- -2 * ll + 50
+  return temp
+}
+
+AIC_one <- function(ll){
+  temp <- -2 * ll + 32
+  return temp
+}
+# --dent--L-V-food_management--
+#dent alpha_Beta
+load("~/Desktop/Honor_thesis/Daphnia_alga_model/Native_host/LL_two_specific_code/alpha_Beta/alpha_Beta.RData")
+d_aB_dim <- 25
+d_aB_ll <- round(pf.loglik.of.mif.estimate,2)
+d_aB_AIC <- AIC_two(d_aB_ll)
+
+#dent sigG_gamma
+load("~/Desktop/Honor_thesis/Daphnia_alga_model/Native_host/LL_two_specific_code/sigG_gamma/sigG_gamma.RData")
+d_sGg_dim <- 25
+d_sGg_ll <- round(pf.loglik.of.mif.estimate,2)
+d_sGg_AIC <- AIC_two(d_sGg_ll)
+
+#dent alpha_gamma
+load("~/Desktop/Honor_thesis/Daphnia_alga_model/Native_host/LL_two_specific_code/alpha_gamma/alpha_gamma.RData")
+d_ag_dim <- 25
+d_ag_ll <- round(pf.loglik.of.mif.estimate,2)
+d_ag_AIC <- AIC_two(d_ag_ll)
+
+#dent alpha_kf
+load("~/Desktop/Honor_thesis/Daphnia_alga_model/Native_host/LL_two_specific_code/alpha_kf/alpha_kf.RData")
+d_ak_dim <- 25
+d_ak_ll <- round(pf.loglik.of.mif.estimate,2)
+d_ak_AIC <- AIC_two(d_ak_ll)
+
+#dent Beta_gamma
+load("~/Desktop/Honor_thesis/Daphnia_alga_model/Native_host/LL_two_specific_code/Beta_gamma/Beta_gamma.RData")
+d_Bg_dim <- 25
+d_Bg_ll <- round(pf.loglik.of.mif.estimate,2)
+d_Bg_AIC <- AIC_two(d_Bg_ll)
+
+#dent kf_Beta
+load("~/Desktop/Honor_thesis/Daphnia_alga_model/Native_host/LL_two_specific_code/kf_Beta/kf_Beta.RData")
+d_kB_dim <- 25
+d_kB_ll <- round(pf.loglik.of.mif.estimate,2)
+d_kB_AIC <- AIC_two(d_kB_ll)
+
+#dent kf_gamma
+load("~/Desktop/Honor_thesis/Daphnia_alga_model/Native_host/LL_two_specific_code/kf_gamma/kf_gamma.RData")
+d_kg_dim <- 25
+d_kg_ll <- round(pf.loglik.of.mif.estimate,2)
+d_kg_AIC <- AIC_two(d_kg_ll)
+
+#dent kf_Theta
+load("~/Desktop/Honor_thesis/Daphnia_alga_model/Native_host/LL_two_specific_code/kf_Theta/kf_Theta.RData")
+d_kT_dim <- 25
+d_kT_ll <- round(pf.loglik.of.mif.estimate,2)
+d_kT_AIC <- AIC_two(d_kT_ll)
+
+#dent sigB_alpha
+load("~/Desktop/Honor_thesis/Daphnia_alga_model/Native_host/LL_two_specific_code/sigB_alpha/sigB_alpha.RData")
+d_sBa_dim <- 25
+d_sBa_ll <- round(pf.loglik.of.mif.estimate,2)
+d_sBa_AIC <- AIC_two(d_sBa_ll)
+
+#dent sigB_Beta
+load("~/Desktop/Honor_thesis/Daphnia_alga_model/Native_host/LL_two_specific_code/sigB_Beta/sigB_Beta.RData")
+d_sBB_dim <- 25
+d_sBB_ll <- round(pf.loglik.of.mif.estimate,2)
+d_sBB_AIC <- AIC_two(d_sBB_ll)
+
+#dent sigB_gamma
+load("~/Desktop/Honor_thesis/Daphnia_alga_model/Native_host/LL_two_specific_code/sigB_gamma/sigB_gamma.RData")
+d_sBg_dim <- 25
+d_sBg_ll <- round(pf.loglik.of.mif.estimate,2)
+d_sBg_AIC <- AIC_two(d_sBg_ll)
+
+#dent sigB_kf
+load("~/Desktop/Honor_thesis/Daphnia_alga_model/Native_host/LL_two_specific_code/sigB_kf/sigB_kf.RData")
+d_sBk_dim <- 25
+d_sBk_ll <- round(pf.loglik.of.mif.estimate,2)
+d_sBk_AIC <- AIC_two(d_sBk_ll)
+
+#dent sigB_sigG
+load("~/Desktop/Honor_thesis/Daphnia_alga_model/Native_host/LL_two_specific_code/sigB_sigG/sigB_sigG.RData")
+d_sBsG_dim <- 25
+d_sBsG_ll <- round(pf.loglik.of.mif.estimate,2)
+d_sBsG_AIC <- AIC_two(d_sBsG_ll)
+
+#dent sigB_Theta
+load("~/Desktop/Honor_thesis/Daphnia_alga_model/Native_host/LL_two_specific_code/sigB_Theta/sigB_Theta.RData")
+d_sBT_dim <- 25
+d_sBT_ll <- round(pf.loglik.of.mif.estimate,2)
+d_sBT_AIC <- AIC_two(d_sBT_ll)
+
+#dent sigG_alpha
+load("~/Desktop/Honor_thesis/Daphnia_alga_model/Native_host/LL_two_specific_code/sigG_alpha/sigG_alpha.RData")
+d_sGa_dim <- 25
+d_sGa_ll <- round(pf.loglik.of.mif.estimate,2)
+d_sGa_AIC <- AIC_two(d_sGa_ll)
+
+#dent sigG_Beta
+load("~/Desktop/Honor_thesis/Daphnia_alga_model/Native_host/LL_two_specific_code/sigG_Beta/sigG_Beta.RData")
+d_sGB_dim <- 25
+d_sGB_ll <- round(pf.loglik.of.mif.estimate,2)
+d_sGB_AIC <- AIC_two(d_sGB_ll)
+
+#dent sigG_kf
+load("~/Desktop/Honor_thesis/Daphnia_alga_model/Native_host/LL_two_specific_code/sigG_kf/sigG_kf.RData")
+d_sGk_dim <- 25
+d_sGk_ll <- round(pf.loglik.of.mif.estimate,2)
+d_sGk_AIC <- AIC_two(d_sGk_ll)
+
+#dent sigG_Theta
+load("~/Desktop/Honor_thesis/Daphnia_alga_model/Native_host/LL_two_specific_code/sigG_Theta/sigG_Theta.RData")
+d_sGT_dim <- 25
+d_sGT_ll <- round(pf.loglik.of.mif.estimate,2)
+d_sGT_AIC <- AIC_two(d_sGT_ll)
+
+#dent Theta_Beta
+load("~/Desktop/Honor_thesis/Daphnia_alga_model/Native_host/LL_two_specific_code/Theta_Beta/Theta_Beta.RData")
+d_TB_dim <- 25
+d_TB_ll <- round(pf.loglik.of.mif.estimate,2)
+d_TB_AIC <- AIC_two(d_TB_ll)
+
+#dent Theta_gamma
+load("~/Desktop/Honor_thesis/Daphnia_alga_model/Native_host/LL_two_specific_code/Theta_gamma/Theta_gamma.RData")
+d_Tg_dim <- 25
+d_Tg_ll <- round(pf.loglik.of.mif.estimate,2)
+d_Tg_AIC <- AIC_two(d_Tg_ll)
+
+#dent sigG
+load("~/Desktop/Honor_thesis/Daphnia_alga_model/Native_host/One_specific_code/sigG/sigG.RData")
+d_sG_dim <- 16
+d_sG_ll <- round(pf.loglik.of.mif.estimate,2)
+d_sG_AIC <- AIC_one(d_sG_ll)
+
+#dent sigB
+load("~/Desktop/Honor_thesis/Daphnia_alga_model/Native_host/One_specific_code/sigB/sigB.RData")
+d_sB_dim <- 16
+d_sB_ll <- round(pf.loglik.of.mif.estimate,2)
+d_sB_AIC <- AIC_one(d_sB_ll)
+
+#dent alpha
+load("~/Desktop/Honor_thesis/Daphnia_alga_model/Native_host/One_specific_code/alpha/alpha.RData")
+d_a_dim <- 16
+d_a_ll <- round(pf.loglik.of.mif.estimate,2)
+d_a_AIC <- AIC_one(d_a_ll)
+
+#dent Beta
+load("~/Desktop/Honor_thesis/Daphnia_alga_model/Native_host/One_specific_code/Beta/Beta.RData")
+d_B_dim <- 16
+d_B_ll <- round(pf.loglik.of.mif.estimate,2)
+d_B_AIC <- AIC_one(d_B_ll)
+
+#dent Theta
+load("~/Desktop/Honor_thesis/Daphnia_alga_model/Native_host/One_specific_code/Theta/Theta.RData")
+d_T_dim <- 16
+d_T_ll <- round(pf.loglik.of.mif.estimate,2)
+d_T_AIC <- AIC_one(d_T_ll)
+
+#dent gamma
+load("~/Desktop/Honor_thesis/Daphnia_alga_model/Native_host/One_specific_code/gamma/gamma.RData")
+d_g_dim <- 16
+d_g_ll <- round(pf.loglik.of.mif.estimate,2)
+d_g_AIC <- AIC_one(d_g_ll)
+
+#dent kf
+load("~/Desktop/Honor_thesis/Daphnia_alga_model/Native_host/One_specific_code/kf/kf.RData")
+d_k_dim <- 16
+d_k_ll <- round(pf.loglik.of.mif.estimate,2)
+d_k_AIC <- AIC_one(d_k_ll)
+
+# --lum--L-V-food_management--
+#lum alpha_Beta
+load("~/Desktop/Honor_thesis/Daphnia_alga_model/Invaisve_host/LL_two_specific_code/alpha_Beta/alpha_Beta.RData")
+l_aB_dim <- 25
+l_aB_ll <- round(pf.loglik.of.mif.estimate,2)
+l_aB_AIC <- AIC_two(l_aB_ll)
+
+#lum sigG_gamma
+load("~/Desktop/Honor_thesis/Daphnia_alga_model/Invaisve_host/LL_two_specific_code/sigG_gamma/sigG_gamma.RData")
+l_sGg_dim <- 25
+l_sGg_ll <- round(pf.loglik.of.mif.estimate,2)
+l_sGg_AIC <- AIC_two(l_sGg_ll)
+
+#lum alpha_gamma
+load("~/Desktop/Honor_thesis/Daphnia_alga_model/Invaisve_host/LL_two_specific_code/alpha_gamma/alpha_gamma.RData")
+l_ag_dim <- 25
+l_ag_ll <- round(pf.loglik.of.mif.estimate,2)
+l_ag_AIC <- AIC_two(l_ag_ll)
+
+#lum alpha_kf
+load("~/Desktop/Honor_thesis/Daphnia_alga_model/Invaisve_host/LL_two_specific_code/alpha_kf/alpha_kf.RData")
+l_ak_dim <- 25
+l_ak_ll <- round(pf.loglik.of.mif.estimate,2)
+l_ak_AIC <- AIC_two(l_ak_ll)
+
+#lum Beta_gamma
+load("~/Desktop/Honor_thesis/Daphnia_alga_model/Invaisve_host/LL_two_specific_code/Beta_gamma/Beta_gamma.RData")
+l_Bg_dim <- 25
+l_Bg_ll <- round(pf.loglik.of.mif.estimate,2)
+l_Bg_AIC <- AIC_two(l_Bg_ll)
+
+#lum kf_Beta
+load("~/Desktop/Honor_thesis/Daphnia_alga_model/Invaisve_host/LL_two_specific_code/kf_Beta/kf_Beta.RData")
+l_kB_dim <- 25
+l_kB_ll <- round(pf.loglik.of.mif.estimate,2)
+l_kB_AIC <- AIC_two(l_kB_ll)
+
+#lum kf_gamma
+load("~/Desktop/Honor_thesis/Daphnia_alga_model/Invaisve_host/LL_two_specific_code/kf_gamma/kf_gamma.RData")
+l_kg_dim <- 25
+l_kg_ll <- round(pf.loglik.of.mif.estimate,2)
+l_kg_AIC <- AIC_two(l_kg_ll)
+
+#lum kf_Theta
+load("~/Desktop/Honor_thesis/Daphnia_alga_model/Invaisve_host/LL_two_specific_code/kf_Theta/kf_Theta.RData")
+l_kT_dim <- 25
+l_kT_ll <- round(pf.loglik.of.mif.estimate,2)
+l_kT_AIC <- AIC_two(l_kT_ll)
+
+#lum sigB_alpha
+load("~/Desktop/Honor_thesis/Daphnia_alga_model/Invaisve_host/LL_two_specific_code/sigB_alpha/sigB_alpha.RData")
+l_sBa_dim <- 25
+l_sBa_ll <- round(pf.loglik.of.mif.estimate,2)
+l_sBa_AIC <- AIC_two(l_sBa_ll)
+
+#lum sigB_Beta
+load("~/Desktop/Honor_thesis/Daphnia_alga_model/Invaisve_host/LL_two_specific_code/sigB_Beta/sigB_Beta.RData")
+l_sBB_dim <- 25
+l_sBB_ll <- round(pf.loglik.of.mif.estimate,2)
+l_sBB_AIC <- AIC_two(l_sBB_ll)
+
+#lum sigB_gamma
+load("~/Desktop/Honor_thesis/Daphnia_alga_model/Invaisve_host/LL_two_specific_code/sigB_gamma/sigB_gamma.RData")
+l_sBg_dim <- 25
+l_sBg_ll <- round(pf.loglik.of.mif.estimate,2)
+l_sBg_AIC <- AIC_two(l_sBg_ll)
+
+#lum sigB_kf
+load("~/Desktop/Honor_thesis/Daphnia_alga_model/Invaisve_host/LL_two_specific_code/sigB_kf/sigB_kf.RData")
+l_sBk_dim <- 25
+l_sBk_ll <- round(pf.loglik.of.mif.estimate,2)
+l_sBk_AIC <- AIC_two(l_sBk_ll)
+
+#lum sigB_sigG
+load("~/Desktop/Honor_thesis/Daphnia_alga_model/Invaisve_host/LL_two_specific_code/sigB_sigG/sigB_sigG.RData")
+l_sBsG_dim <- 25
+l_sBsG_ll <- round(pf.loglik.of.mif.estimate,2)
+l_sBsG_AIC <- AIC_two(l_sBsG_ll)
+
+#lum sigB_Theta
+load("~/Desktop/Honor_thesis/Daphnia_alga_model/Invaisve_host/LL_two_specific_code/sigB_Theta/sigB_Theta.RData")
+l_sBT_dim <- 25
+l_sBT_ll <- round(pf.loglik.of.mif.estimate,2)
+l_sBT_AIC <- AIC_two(l_sBT_ll)
+
+#lum sigG_alpha
+load("~/Desktop/Honor_thesis/Daphnia_alga_model/Invaisve_host/LL_two_specific_code/sigG_alpha/sigG_alpha.RData")
+l_sGa_dim <- 25
+l_sGa_ll <- round(pf.loglik.of.mif.estimate,2)
+l_sGa_AIC <- AIC_two(l_sGa_ll)
+
+#lum sigG_Beta
+load("~/Desktop/Honor_thesis/Daphnia_alga_model/Invaisve_host/LL_two_specific_code/sigG_Beta/sigG_Beta.RData")
+l_sGB_dim <- 25
+l_sGB_ll <- round(pf.loglik.of.mif.estimate,2)
+l_sGB_AIC <- AIC_two(l_sGB_ll)
+
+#lum sigG_kf
+load("~/Desktop/Honor_thesis/Daphnia_alga_model/Invaisve_host/LL_two_specific_code/sigG_kf/sigG_kf.RData")
+l_sGk_dim <- 25
+l_sGk_ll <- round(pf.loglik.of.mif.estimate,2)
+l_sGk_AIC <- AIC_two(l_sGk_ll)
+
+#lum sigG_Theta
+load("~/Desktop/Honor_thesis/Daphnia_alga_model/Invaisve_host/LL_two_specific_code/sigG_Theta/sigG_Theta.RData")
+l_sGT_dim <- 25
+l_sGT_ll <- round(pf.loglik.of.mif.estimate,2)
+l_sGT_AIC <- AIC_two(l_sGT_ll)
+
+#lum Theta_Beta
+load("~/Desktop/Honor_thesis/Daphnia_alga_model/Invaisve_host/LL_two_specific_code/Theta_Beta/Theta_Beta.RData")
+l_TB_dim <- 25
+l_TB_ll <- round(pf.loglik.of.mif.estimate,2)
+l_TB_AIC <- AIC_two(l_TB_ll)
+
+#lum Theta_gamma
+load("~/Desktop/Honor_thesis/Daphnia_alga_model/Invaisve_host/LL_two_specific_code/Theta_gamma/Theta_gamma.RData")
+l_Tg_dim <- 25
+l_Tg_ll <- round(pf.loglik.of.mif.estimate,2)
+l_Tg_AIC <- AIC_two(l_Tg_ll)
+
+#lum sigG
+load("~/Desktop/Honor_thesis/Daphnia_alga_model/Invaisve_host/One_specific_code/sigG/sigG.RData")
+l_sG_dim <- 16
+l_sG_ll <- round(pf.loglik.of.mif.estimate,2)
+l_sG_AIC <- AIC_one(l_sG_ll)
+
+#lum sigB
+load("~/Desktop/Honor_thesis/Daphnia_alga_model/Invaisve_host/One_specific_code/sigB/sigB.RData")
+l_sB_dim <- 16
+l_sB_ll <- round(pf.loglik.of.mif.estimate,2)
+l_sB_AIC <- AIC_one(l_sB_ll)
+
+#lum alpha
+load("~/Desktop/Honor_thesis/Daphnia_alga_model/Invaisve_host/One_specific_code/alpha/alpha.RData")
+l_a_dim <- 16
+l_a_ll <- round(pf.loglik.of.mif.estimate,2)
+l_a_AIC <- AIC_one(l_a_ll)
+
+#lum Beta
+load("~/Desktop/Honor_thesis/Daphnia_alga_model/Invaisve_host/One_specific_code/Beta/Beta.RData")
+l_B_dim <- 16
+l_B_ll <- round(pf.loglik.of.mif.estimate,2)
+l_B_AIC <- AIC_one(l_B_ll)
+
+#lum Theta
+load("~/Desktop/Honor_thesis/Daphnia_alga_model/Invaisve_host/One_specific_code/Theta/Theta.RData")
+l_T_dim <- 16
+l_T_ll <- round(pf.loglik.of.mif.estimate,2)
+l_T_AIC <- AIC_one(l_T_ll)
+
+#lum gamma
+load("~/Desktop/Honor_thesis/Daphnia_alga_model/Invaisve_host/One_specific_code/gamma/gamma.RData")
+l_g_dim <- 16
+l_g_ll <- round(pf.loglik.of.mif.estimate,2)
+l_g_AIC <- AIC_one(l_g_ll)
+
+#lum kf
+load("~/Desktop/Honor_thesis/Daphnia_alga_model/Invaisve_host/One_specific_code/kf/kf.RData")
+l_k_dim <- 16
+l_k_ll <- round(pf.loglik.of.mif.estimate,2)
+l_k_AIC <- AIC_one(l_k_ll)
+@
+\section{Appendix}
+Tables for each simulations and calculations
+% \subsection{Table for Logistic models}
+\FloatBarrier
+\begin{table}[h!]
+\centering
+\begin{tabular}{||c |c |c |c||} 
+ \hline
+Specific parameters & dimension & max log-likelihood & AIC \\ [0.5ex] 
+ \hline\hline
+   $K$                 & \Sexpr{lg_one_dim}       & \Sexpr{lg_K_ll}           & \Sexpr{lg_K_AIC} \\
+   $K + \sigma_S$        & \Sexpr{lg_two_dim}        & \Sexpr{lg_KsG_ll}            & \Sexpr{lg_KsG_AIC}   \\
+   all specific        & \Sexpr{lg_zero_dim}         & \Sexpr{lg_KsG_ll}             & \Sexpr{lg_KsG_AIC}   \\
+   $\sigma_S$          & \Sexpr{lg_one_dim}        & \Sexpr{lg_sG_ll}           & \Sexpr{lg_sG_AIC} \\
+   $r$ + $K$           & \Sexpr{lg_two_dim}        & \Sexpr{lg_rK_ll}            & \Sexpr{lg_rK_AIC} \\
+   $r$ + $\sigma_S$    & \Sexpr{lg_two_dim}        & \Sexpr{lg_rsG_ll}            & \Sexpr{lg_rsG_AIC}  \\
+   $r$                 & \Sexpr{lg_one_dim}        & \Sexpr{lg_r_ll}          & \Sexpr{lg_r_AIC} \\[1ex]
+ \hline
+\end{tabular}
+\caption{This table includes logistic growth models with different choices of parameters to be either unit specific or shared}
+\label{Table:1}
+\end{table}
+
+% \subsection{Table for Lotka-Volterra models with enought food supply}
+\begin{table}[h!]
+\centering
+\begin{tabular}{||c |c |c |c||} 
+ \hline
+Specific parameters & dimension & max log-likelihood & AIC \\ [0.5ex] 
+ \hline\hline
+ $\alpha$               & \Sexpr{one_dim}        & \Sexpr{x_a_ll}           & \Sexpr{x_a_AIC} \\
+   $\beta$                & \Sexpr{one_dim}        & \Sexpr{x_B_ll}          & \Sexpr{x_B_AIC} \\
+   $\gamma$               & \Sexpr{one_dim}        & \Sexpr{x_g_ll}           & \Sexpr{x_g_AIC} \\
+   $\theta$               & \Sexpr{one_dim}        & \Sexpr{x_T_ll}           & \Sexpr{x_T_AIC} \\
+   $\sigma_S$             & \Sexpr{one_dim}        & \Sexpr{x_sG_ll}          & \Sexpr{x_sG_AIC}  \\
+   $\sigma_F$             & \Sexpr{one_dim}        & \Sexpr{x_sB_ll}           & \Sexpr{x_sB_AIC} \\
+   $k_f$                  & \Sexpr{one_dim}        & \Sexpr{x_k_ll}           & \Sexpr{x_k_AIC}  \\
+   $\alpha , k_f$         & \Sexpr{two_dim}        & \Sexpr{x_ak_ll}           & \Sexpr{x_ak_AIC}   \\
+   $\alpha , \beta , k_f$ & \Sexpr{thr_dim}        & \Sexpr{x_aBk_ll}           & \Sexpr{x_aBk_AIC}  \\
+   $\beta , k_f$          & \Sexpr{two_dim}        & \Sexpr{x_Bk_ll}           & \Sexpr{x_Bk_AIC} \\
+   $\alpha,\gamma,k_f$    & \Sexpr{thr_dim}        & \Sexpr{x_agk_ll}          & \Sexpr{x_agk_AIC} \\
+   $\theta,k_f$           & \Sexpr{two_dim}        & \Sexpr{x_Tk_ll}          & \Sexpr{x_Tk_AIC} \\
+   $\alpha,\theta$        & \Sexpr{two_dim}        & \Sexpr{x_aT_ll}           & \Sexpr{x_aT_AIC} \\
+ all specific           & \Sexpr{all_dim}        & \Sexpr{x_all_ll}           & \Sexpr{x_all_AIC} \\[1ex]
+ \hline
+\end{tabular}
+\caption{This table includes Lotka-Volterra model with enough food supply with different choices of parameters to be either unit specific or shared}
+\label{Table:2}
+\end{table}
+
+
+
+% \subsection{Table for Lotka-Volterra models with food supply management}
+\begin{table}[h!]
+\centering
+\begin{tabular}{||c |c |c |c||} 
+ \hline
+Specific parameters & dimension & max log-likelihood & AIC \\ [0.5ex] 
+ \hline\hline
+   $\sigma_S$   &   \Sexpr{one_dim}      & \Sexpr{d_sG_ll}          & \Sexpr{d_sG_ll}  \\
+ $\sigma_S,\theta$   & \Sexpr{two_dim}        & \Sexpr{d_sGT_ll}          & \Sexpr{d_sGT_ll}    \\
+   $\sigma_S,\beta$    & \Sexpr{two_dim}        & \Sexpr{d_sGB_ll}         & \Sexpr{d_sGB_ll}    \\
+   $\sigma_S,\alpha$   & \Sexpr{two_dim}        & \Sexpr{d_sGa_ll}         & \Sexpr{d_sGa_ll}  \\
+   $\sigma_S,\gamma$   & \Sexpr{two_dim}        & \Sexpr{d_sGg_ll}          & \Sexpr{d_sGg_ll}  \\
+   $\sigma_S,\sigma_F$ & \Sexpr{two_dim}        & \Sexpr{d_sBsG_ll}          & \Sexpr{d_sBsG_ll}  \\
+ $\sigma_S,k_f$      & \Sexpr{two_dim}        & \Sexpr{d_sGk_ll}          & \Sexpr{d_sGk_ll} \\
+   $\alpha, \sigma_F$  & \Sexpr{two_dim}        & \Sexpr{d_sBa_ll}          & \Sexpr{d_sBa_ll} \\
+   $\alpha, \beta$     & \Sexpr{two_dim}        & \Sexpr{d_aB_ll}            & \Sexpr{d_aB_ll}   \\
+      $\alpha$   & \Sexpr{one_dim}        & \Sexpr{d_a_ll}          & \Sexpr{d_a_ll}  \\
+   $\beta,\gamma$      & \Sexpr{two_dim}        & \Sexpr{d_Bg_ll}         & \Sexpr{d_Bg_ll} \\
+  $\gamma, \sigma_F$  & \Sexpr{two_dim}        & \Sexpr{d_sBg_ll}          & \Sexpr{d_sBg_ll}  \\
+   $\beta, \sigma_F$   & \Sexpr{two_dim}        & \Sexpr{d_sBB_ll}          & \Sexpr{d_sBB_ll}  \\
+   $\sigma_F$   & \Sexpr{one_dim}        & \Sexpr{d_sB_ll}          & \Sexpr{d_sB_ll}  \\
+   $\alpha,\theta$     & \Sexpr{two_dim}        & \Sexpr{d_aT_ll}         & \Sexpr{d_aT_ll}     \\
+   $\theta, \gamma$    & \Sexpr{two_dim}        & \Sexpr{d_Tg_ll}          & \Sexpr{d_Tg_ll} \\
+   $\alpha,\gamma$     & \Sexpr{two_dim}        & \Sexpr{d_ag_ll}          & \Sexpr{d_ag_ll} \\
+  $\beta$   & \Sexpr{one_dim}        & \Sexpr{d_B_ll}         & \Sexpr{d_B_ll}  \\
+  $k_f, \sigma_F$     & \Sexpr{two_dim}        & \Sexpr{d_sBk_ll}          & \Sexpr{d_sBk_ll}  \\
+   $\theta , \beta$    & \Sexpr{two_dim}        & \Sexpr{d_TB_ll}          & \Sexpr{d_TB_ll}  \\
+   $\theta$   & \Sexpr{one_dim}        & \Sexpr{d_T_ll}          & \Sexpr{d_T_ll}    \\
+ $\theta , \beta$    & \Sexpr{two_dim}        & \Sexpr{d_TB_ll}          &  \Sexpr{d_TB_ll}\\
+   $\alpha, \theta$    & \Sexpr{two_dim}        & \Sexpr{d_aT_ll}          & \Sexpr{d_aT_ll}  \\
+      $k_f$   & \Sexpr{one_dim}        & \Sexpr{d_k_ll}          & \Sexpr{d_k_ll}   \\
+   $\alpha , k_f$      & \Sexpr{two_dim}        & \Sexpr{d_ak_ll}            & \Sexpr{d_ak_ll}   \\
+   $\gamma , k_f$      & \Sexpr{two_dim}        & \Sexpr{d_gk_ll}          & \Sexpr{d_gk_ll} \\
+   $\theta , k_f$      & \Sexpr{two_dim}        & \Sexpr{d_Tk_ll}          & \Sexpr{d_Tk_ll} \\
+   $\beta , k_f$       & \Sexpr{two_dim}        & \Sexpr{d_Bk_ll}         & \Sexpr{d_Bk_ll} \\[1ex]
+ \hline
+\end{tabular}
+\caption{This table includes newly introduced Lotka-Volterra models fitted to Daphnia lumniza with different choices of parameters to be either unit specific or shared}
+\label{Table:3}
+\end{table}
+
+\begin{table}[h!]
+\centering
+\begin{tabular}{||c |c |c |c||}
+ \hline
+Specific parameters & dimension & max log-likelihood & AIC \\ [0.5ex]
+ \hline\hline
+   $\sigma_S$   & \Sexpr{one_dim}        & \Sexpr{l_sG_ll}          & \Sexpr{l_sG_AIC}  \\
+  $\sigma_S,\beta$  & \Sexpr{two_dim}        & \Sexpr{l_sB_ll}          & \Sexpr{l_sB_AIC}    \\
+     $\sigma_S,\theta$  & \Sexpr{two_dim}        & \Sexpr{l_sT_ll}         & \Sexpr{l_sT_AIC}   \\
+     $\alpha, \beta$ & \Sexpr{two_dim}        & \Sexpr{l_sB_ll}          & \Sexpr{l_sB_AIC}  \\
+     $\sigma_S,\sigma_F$ & \Sexpr{two_dim}        & \Sexpr{l_sBsG_ll}          & \Sexpr{l_sBsG_AIC}   \\
+   $\sigma_S,\alpha$ & \Sexpr{two_dim}        & \Sexpr{l_sGa_ll}          & \Sexpr{l_sGa_AIC}  \\
+  $\alpha, \sigma_F$    & \Sexpr{two_dim}        & \Sexpr{l_sBa_ll}          & \Sexpr{l_sBa_AIC} \\
+   $\sigma_S,k_f$   & \Sexpr{two_dim}        & \Sexpr{l_sGk_ll}          & \Sexpr{l_sGk_AIC}  \\
+    $\sigma_S,\gamma$    & \Sexpr{two_dim}        & \Sexpr{l_sGg_ll}            & \Sexpr{l_sGg_AIC}   \\
+     $\beta,\gamma$   & \Sexpr{one_dim}        & \Sexpr{l_Bg_ll}          & \Sexpr{l_Bg_AIC}  \\
+      $\alpha$    & \Sexpr{two_dim}        & \Sexpr{l_a_ll}          & \Sexpr{l_a_AIC} \\
+  $\alpha,\theta$ & \Sexpr{two_dim}        & \Sexpr{l_aT_ll}          & \Sexpr{l_aT_AIC} \\
+   $\beta, \sigma_F$   & \Sexpr{two_dim}        & \Sexpr{l_sBB_ll}          & \Sexpr{l_sBB_AIC} \\
+   $\sigma_F$   & \Sexpr{one_dim}        & \Sexpr{l_sB_ll}          & \Sexpr{l_sB_AIC}   \\
+     $\alpha,\gamma$    & \Sexpr{two_dim}        & \Sexpr{l_ag_ll}          & \Sexpr{l_ag_AIC}    \\
+     $k_f, \sigma_F$    & \Sexpr{two_dim}        & \Sexpr{l_sBk_ll}         & \Sexpr{l_sBk_AIC} \\
+     $\gamma, \sigma_F$   & \Sexpr{two_dim}        & \Sexpr{l_sBg_ll}          & \Sexpr{l_sBg_AIC} \\
+   $\theta , \beta$  & \Sexpr{one_dim}        & \Sexpr{l_TB_ll}           & \Sexpr{l_TB_AIC}  \\
+   $\theta, \gamma$  & \Sexpr{two_dim}        & \Sexpr{l_Tg_ll}          & \Sexpr{l_Tg_AIC}  \\
+     $\alpha , k_f$  & \Sexpr{two_dim}        & \Sexpr{l_ak_ll}          & \Sexpr{l_ak_AIC} \\
+   $\theta$   & \Sexpr{one_dim}        & \Sexpr{l_T_ll}           & \Sexpr{l_T_AIC}  \\
+ $\alpha, \theta$  & \Sexpr{two_dim}        & \Sexpr{l_aT_ll}           & \Sexpr{l_aT_AIC}\\
+      $\theta , k_f$   & \Sexpr{two_dim}        & \Sexpr{l_Tk_ll}           & \Sexpr{l_Tk_AIC} \\
+        $\beta , k_f$  & \Sexpr{one_dim}        & \Sexpr{l_Bk_ll}           & \Sexpr{l_Bk_AIC}  \\
+     $\beta$    & \Sexpr{two_dim}        & \Sexpr{l_B_ll}             & \Sexpr{l_B_AIC}    \\
+   $\gamma , k_f$      & \Sexpr{two_dim}        & \Sexpr{l_gk_ll}          & \Sexpr{l_gk_AIC} \\
+      $\theta , \beta$   & \Sexpr{two_dim}        & \Sexpr{l_TB_ll}           & \Sexpr{l_TB_AIC} \\
+     $k_f$    & \Sexpr{two_dim}        & \Sexpr{l_k_ll}           & \Sexpr{l_k_AIC}  \\[1ex]
+ \hline
+\end{tabular}
+\caption{This table includes newly introduced Lotka-Volterra models fitted to Daphnia lumniza with different choices of parameters to be either unit specific or shared}
+\label{Table:3}
+\end{table}
+
+\begin{table}[h!]
+\centering
+\begin{tabular}{||c |c |c |c|c|c|c|c||} 
+ \hline
+ unit & $\alpha \cdot 10$     & $\beta \cdot 10^4 $      & $\gamma \cdot 10 $     & $\theta \cdot 10$     & $k_f$        & $\sigma_S \cdot 10$   & $\sigma_F \cdot 10$ \\ [0.5ex] 
+ \hline\hline
+ u1   & \Sexpr{alpha} & \Sexpr{Beta} & \Sexpr{gamma} & \Sexpr{Theta} & \Sexpr{kf} & \Sexpr{u1} & \Sexpr{sigF} \\
+   u2   & \Sexpr{alpha} & \Sexpr{Beta} & \Sexpr{gamma}& \Sexpr{Theta} & \Sexpr{kf} & \Sexpr{u2} & \Sexpr{sigF} \\
+   u3   & \Sexpr{alpha} & \Sexpr{Beta} & \Sexpr{gamma} & \Sexpr{Theta} & \Sexpr{kf} & \Sexpr{u3} & \Sexpr{sigF} \\
+   u4   & \Sexpr{alpha} & \Sexpr{Beta} & \Sexpr{gamma} & \Sexpr{Theta} & \Sexpr{kf} & \Sexpr{u4} & \Sexpr{sigF} \\
+   u5   & \Sexpr{alpha} & \Sexpr{Beta} & \Sexpr{gamma} & \Sexpr{Theta} & \Sexpr{kf} & \Sexpr{u5} & \Sexpr{sigF} \\
+  u6   & \Sexpr{alpha} & \Sexpr{Beta} & \Sexpr{gamma} & \Sexpr{Theta} & \Sexpr{kf} & \Sexpr{u6} & \Sexpr{sigF}\\
+   u7   & \Sexpr{alpha} & \Sexpr{Beta} & \Sexpr{gamma} & \Sexpr{Theta} & \Sexpr{kf} & \Sexpr{u7} & \Sexpr{sigF} \\
+   u8   & \Sexpr{alpha} & \Sexpr{Beta} & \Sexpr{gamma} & \Sexpr{Theta} & \Sexpr{kf} & \Sexpr{u8} & \Sexpr{sigF} \\
+   u9   & \Sexpr{alpha} & \Sexpr{Beta} & \Sexpr{gamma} & \Sexpr{Theta}& \Sexpr{kf} & \Sexpr{u9} & \Sexpr{sigF} \\
+   u10  & \Sexpr{alpha} & \Sexpr{Beta} & \Sexpr{gamma} & \Sexpr{Theta} & \Sexpr{kf} & \Sexpr{u10} & \Sexpr{sigF} \\[1ex]
+ \hline
+\end{tabular}
+\caption{This table includes parameter swarm that gets best AIC with Lotka-Volterra models fitted on Daphnia dentifera panel data}
+\label{Table:1}
+\end{table}
+
+\begin{table}[h!]
+\centering
+\begin{tabular}{||c |c |c |c|c|c|c|c||} 
+ \hline
+ unit & $\alpha \cdot 10$     & $\beta \cdot 10^4 $      & $\gamma  $     & $\theta \cdot 10$     & $k_f $        & $\sigma_S \cdot 10$   & $\sigma_F \cdot 10$ \\ [0.5ex] 
+ \hline\hline
+ u1   & \Sexpr{alpha} & \Sexpr{Beta} & \Sexpr{gamma} & \Sexpr{Theta} & \Sexpr{kf} & \Sexpr{u1} & \Sexpr{sigF} \\
+   u2   & \Sexpr{alpha} & \Sexpr{Beta} & \Sexpr{gamma}& \Sexpr{Theta} & \Sexpr{kf} & \Sexpr{u2} & \Sexpr{sigF} \\
+   u3   & \Sexpr{alpha} & \Sexpr{Beta} & \Sexpr{gamma} & \Sexpr{Theta} & \Sexpr{kf} & \Sexpr{u3} & \Sexpr{sigF} \\
+   u4   & \Sexpr{alpha} & \Sexpr{Beta} & \Sexpr{gamma} & \Sexpr{Theta} & \Sexpr{kf} & \Sexpr{u4} & \Sexpr{sigF} \\
+   u5   & \Sexpr{alpha} & \Sexpr{Beta} & \Sexpr{gamma} & \Sexpr{Theta} & \Sexpr{kf} & \Sexpr{u5} & \Sexpr{sigF} \\
+  u6   & \Sexpr{alpha} & \Sexpr{Beta} & \Sexpr{gamma} & \Sexpr{Theta} & \Sexpr{kf} & \Sexpr{u6} & \Sexpr{sigF}\\
+   u7   & \Sexpr{alpha} & \Sexpr{Beta} & \Sexpr{gamma} & \Sexpr{Theta} & \Sexpr{kf} & \Sexpr{u7} & \Sexpr{sigF} \\
+   u8   & \Sexpr{alpha} & \Sexpr{Beta} & \Sexpr{gamma} & \Sexpr{Theta} & \Sexpr{kf} & \Sexpr{u8} & \Sexpr{sigF} \\
+   u9   & \Sexpr{alpha} & \Sexpr{Beta} & \Sexpr{gamma} & \Sexpr{Theta}& \Sexpr{kf} & \Sexpr{u9} & \Sexpr{sigF} \\
+   u10  & \Sexpr{alpha} & \Sexpr{Beta} & \Sexpr{gamma} & \Sexpr{Theta} & \Sexpr{kf} & \Sexpr{u10} & \Sexpr{sigF} \\[1ex]
+ \hline
+\end{tabular}
+\caption{This table includes parameter swarm that gets best AIC with Lotka-Volterra models fitted on Daphnia lumholtzi panel data}
+\label{Table:2}
+\end{table}
+
+\begin{table}[h!]
+\centering
+\begin{tabular}{||c |c||}
+ \hline
+parameter & unit\\[0.5ex]
+\hline\hline
+$\alpha$ &$\left(6hr \right)^{-1}$\\
+$\beta $& $L \cdot individual^{-1} \cdot \left(6hr \right)^{-1}$\\
+$\gamma $ &  $\left(6hr \right)^{-1}$\\
+$\theta $ & $ L \cdot \left( 10^5 cells \right) ^{-1} \cdot \left(6hr \right)^{-1}$\\
+$k_f$ & $10^5 cells \cdot L $ \\
+$\sigma_S $ & $\left(6hr \right)^{-1}$\\
+$\sigma_F $ & $\left(6hr \right)^{-1}$\\[1ex]
+ \hline
+\end{tabular}
+\caption{This table shows the units of the parameters}
+\label{Table:3}
+\end{table}
+
+\FloatBarrier
+\bibliography{reference}
+\end{document}
