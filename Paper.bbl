@@ -1,0 +1,156 @@
+\begin{thebibliography}{}
+
+\bibitem[Arnold, 1971]{arnold1971ingestion}
+Arnold, D.~E. (1971).
+\newblock Ingestion, assimilation, survival, and reproduction by daphnia pulex
+  fed seven species of blue-green algae 1, 2.
+\newblock {\em Limnology and oceanography}, 16(6):906--920.
+
+\bibitem[Bhadra et~al., 2011]{bhadra2011malaria}
+Bhadra, A., Ionides, E.~L., Laneri, K., Pascual, M., Bouma, M., and Dhiman,
+  R.~C. (2011).
+\newblock Malaria in northwest india: Data analysis via partially observed
+  stochastic differential equation models driven by l{\'e}vy noise.
+\newblock {\em Journal of the American Statistical Association},
+  106(494):440--451.
+
+\bibitem[Bozdogan, 1987]{bozdogan1987model}
+Bozdogan, H. (1987).
+\newblock Model selection and akaike's information criterion (aic): The general
+  theory and its analytical extensions.
+\newblock {\em Psychometrika}, 52(3):345--370.
+
+\bibitem[Bret{\'o} et~al., 2009]{breto2009time}
+Bret{\'o}, C., He, D., Ionides, E.~L., and King, A.~A. (2009).
+\newblock Time series analysis via mechanistic models.
+\newblock {\em The Annals of Applied Statistics}, pages 319--348.
+
+\bibitem[Bret{\'o} and Ionides, 2011]{breto2011compound}
+Bret{\'o}, C. and Ionides, E.~L. (2011).
+\newblock Compound markov counting processes and their applications to modeling
+  infinitesimally over-dispersed systems.
+\newblock {\em Stochastic Processes and their Applications},
+  121(11):2571--2591.
+
+\bibitem[Bret{\'o} et~al., 2020]{Carles2020}
+Bret{\'o}, C., Ionides, E.~L., and King, A.~A. (2020).
+\newblock Panel data analysis via mechanistic models.
+\newblock {\em Journal of the American Statistical Association},
+  115(531):1178--1188.
+
+\bibitem[Duarte et~al., 2003]{Duarte2003}
+Duarte, C.~M., Amthor, J.~S., DeAngelis, D.~L., Joyce, L.~A., Maranger, R.~J.,
+  Pace, M.~L., Pastor, J., and Running, S.~W. (2003).
+\newblock {\em The limits to models in ecology}, pages 437--451.
+\newblock Princeton University Press, New Jersey, NY.
+
+\bibitem[Duffy et~al., 2010]{duffy2010temporal}
+Duffy, M.~A., C{\'a}ceres, C.~E., Hall, S.~R., Tessier, A.~J., and Ives, A.~R.
+  (2010).
+\newblock Temporal, spatial, and between-host comparisons of patterns of
+  parasitism in lake zooplankton.
+\newblock {\em Ecology}, 91(11):3322--3331.
+
+\bibitem[Havel and Hebert, 1993]{havel1993daphnia}
+Havel, J.~E. and Hebert, P.~D. (1993).
+\newblock Daphnia lumholtzi in north america: another exotic zooplankter.
+\newblock {\em Limnology and Oceanography}, 38(8):1823--1827.
+
+\bibitem[Ionides et~al., 2011]{ionides2011iterated}
+Ionides, E.~L., Bhadra, A., Atchad{\'e}, Y., and King, A. (2011).
+\newblock Iterated filtering.
+
+\bibitem[Ionides et~al., 2006]{ionides2006inference}
+Ionides, E.~L., Bret{\'o}, C., and King, A.~A. (2006).
+\newblock Inference for nonlinear dynamical systems.
+\newblock {\em Proceedings of the National Academy of Sciences},
+  103(49):18438--18443.
+
+\bibitem[Ionides et~al., 2015]{Edwards2012}
+Ionides, E.~L., Nguyen, D., Atchad{\'e}, Y., Stoev, S., and King, A.~A. (2015).
+\newblock Inference for dynamic and latent variable models via iterated,
+  perturbed bayes maps.
+\newblock {\em Proceedings of the National Academy of Sciences},
+  112(3):719--724.
+
+\bibitem[Johnstone and Titterington, 2009]{johnstone2009statistical}
+Johnstone, I.~M. and Titterington, D.~M. (2009).
+\newblock Statistical challenges of high-dimensional data.
+
+\bibitem[King et~al., 2022]{king2022markov}
+King, A.~A., Lin, Q., and Ionides, E.~L. (2022).
+\newblock Markov genealogy processes.
+\newblock {\em Theoretical population biology}, 143:77--91.
+
+\bibitem[King et~al., 2016]{King2016}
+King, A.~A., Nguyen, D., and Ionides, E.~L. (2016).
+\newblock Statistical inference for partially observed markov processes via the
+  {R} package pomp.
+\newblock {\em Journal of Statistical Software}, 69(12).
+
+\bibitem[Ma, 2021]{ma2021unified}
+Ma, Z. (2021).
+\newblock A unified survival-analysis approach to insect population development
+  and survival times.
+\newblock {\em Scientific Reports}, 11(1):8223.
+
+\bibitem[Mart{\'\i}nez-Jer{\'o}nimo et~al., 1994]{martinez1994effect}
+Mart{\'\i}nez-Jer{\'o}nimo, F., Villase{\~n}or, R., Rios, G., and Espinosa, F.
+  (1994).
+\newblock Effect of food type and concentration on the survival, longevity, and
+  reproduction of daphnia magna.
+\newblock {\em Hydrobiologia}, 287:207--214.
+
+\bibitem[Mouquet et~al., 2015]{mouquet2015predictive}
+Mouquet, N., Lagadeuc, Y., Devictor, V., Doyen, L., Duputi{\'e}, A., Eveillard,
+  D., Faure, D., Garnier, E., Gimenez, O., Huneman, P., et~al. (2015).
+\newblock Predictive ecology in a changing world.
+\newblock {\em Journal of applied ecology}, 52(5):1293--1310.
+
+\bibitem[Ning and Ionides, 2021]{ning2021systemic}
+Ning, N. and Ionides, E.~L. (2021).
+\newblock Systemic infinitesimal over-dispersion on graphical dynamic models.
+\newblock {\em arXiv preprint arXiv:2106.10387}.
+
+\bibitem[Nylund et~al., 2007]{nylund2007deciding}
+Nylund, K.~L., Asparouhov, T., and Muth{\'e}n, B.~O. (2007).
+\newblock Deciding on the number of classes in latent class analysis and growth
+  mixture modeling: A monte carlo simulation study.
+\newblock {\em Structural equation modeling: A multidisciplinary Journal},
+  14(4):535--569.
+
+\bibitem[Searle et~al., 2016]{Searle2016}
+Searle, C.~L., Cortez, M.~H., Hunsberger, K.~K., Grippi, D.~C., Oleksy, I.~A.,
+  Shaw, C.~L., de~la Serna, S.~B., Lash, C.~L., Dhir, K.~L., and Duffy, M.~A.
+  (2016).
+\newblock Population density, not host competence, drives patterns of disease
+  in an invaded community.
+\newblock {\em The American Naturalist}, 188(5):554--566.
+
+\bibitem[Stalidzans et~al., 2020]{Stalidzans2020}
+Stalidzans, E., Zanin, M., Tieri, P., Castiglione, F., Polster, A., Scheiner,
+  S., and Schmidt, H.~H. (2020).
+\newblock Mechanistic modeling and multiscale applications for precision
+  medicine: Theory and practice.
+\newblock {\em Network and systems medicine}, 3(1):36--56.
+
+\bibitem[Welton and Ades, 2005]{welton2005estimation}
+Welton, N.~J. and Ades, A. (2005).
+\newblock Estimation of markov chain transition probabilities and rates from
+  fully and partially observed data: uncertainty propagation, evidence
+  synthesis, and model calibration.
+\newblock {\em Medical Decision Making}, 25(6):633--645.
+
+\bibitem[Wood, 2001]{wood2001partially}
+Wood, S.~N. (2001).
+\newblock Partially specified ecological models.
+\newblock {\em Ecological Monographs}, 71(1):1--25.
+
+\bibitem[Xue et~al., 2020]{xue2020data}
+Xue, L., Jing, S., Miller, J.~C., Sun, W., Li, H., Estrada-Franco, J.~G.,
+  Hyman, J.~M., and Zhu, H. (2020).
+\newblock A data-driven network model for the emerging covid-19 epidemics in
+  wuhan, toronto and italy.
+\newblock {\em Mathematical biosciences}, 326:108391.
+
+\end{thebibliography}
