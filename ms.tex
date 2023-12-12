@@ -236,10 +236,10 @@ The SIRPF model describes the dynamics of the Susceptible($S$), Infected($I$), R
 {
 \small
 \begin{align}
-&d S(t) = r F(t)\left(S(t)+\xi I(t)\right)dt - \theta_{S}S(t) dt - p f_{S} S(t) Pdt - \delta S(t)dt + S(t) d\zeta_{S}(t),\\
-&d I(t) = p f_{S} S(t) Pdt - \theta_{I} I(t)dt - \delta I(t)dt + I(t) d\zeta_{I}(t),\\
-&dF(t) = \alpha F(t)\left(1-\frac{F(t)}{K_F}\right)dt - \gamma F(t) \left(S(t)+\xi I(t)\right) dt - \delta F(t) dt + \mu dt + F(t) d\zeta_F(t),\\
-&d P(t) = \beta d I(t)dt +  - f_{S} S(t) P(t)dt - f_{I} I(t) P(t)dt - \theta_{\mathrm{p}} P(t)dt - \delta P(t) dt + P(t) d\zeta_{P}(t),\\
+&d S(t) = r F(t)\left(S(t)+\xi I(t)\right)dt - \theta_{S}S(t) dt - p f_{S} S(t) Pdt - \delta S(t)dt + S(t) d\zeta_{S},\\
+&d I(t) = p f_{S} S(t) Pdt - \theta_{I} I(t)dt - \delta I(t)dt + I(t) d\zeta_{I},\\
+&dF(t) = \alpha F(t)\left(1-\frac{F(t)}{K_F}\right)dt - \gamma F(t) \left(S(t)+\xi I(t)\right) dt - \delta F(t) dt + \mu dt + F(t) d\zeta_F,\\
+&d P(t) = \beta d I(t)dt - f_{S} S(t) P(t)dt - f_{I} I(t) P(t)dt - \theta_{\mathrm{p}} P(t)dt - \delta P(t) dt + P(t) d\zeta_{P},\\
 &d\zeta_{S} \sim N\left(0, \sigma_{S}^{2}dt\right),\\
 &d\zeta_{I} \sim N\left(0, \sigma_{I}^{2}dt\right),\\
 &d\zeta_{F} \sim N\left(0, \sigma_{F}^{2}dt\right),\\
@@ -310,26 +310,24 @@ Each equation intricately ties the state variables to depict the complex dynamic
 {
 \small
 \begin{align}
-\begin{split}
-&d S_n(t) = r_n F(t) \left(S_n(t)+\xi I_n(t)\right)dt - \theta_{S_n}S_n(t) dt - p_n f_{S_n} S_n(t) P(t)dt -\\
-&\quad \quad \quad\delta S_n(t)dt + S_n(t) d\zeta_{S_n}(t),\\
-\end{split}
-\\
-&d I_n(t) = p_n f_{S_n} S_n(t) Pdt - \theta_{I_n} I_n(t)dt - \delta I_n(t)dt + I_n d\zeta_{I_n}(t),\\
-\begin{split}
-&d S_i(t) = r_i F(t)\left(S_i(t)+\xi I_i(t)\right)dt - \theta_{S_i} S_i(t) dt - p_i f_{S_i} S_i(t) P(t)dt - \\
-&\quad \quad \quad \delta S_i(t)dt + S_i(t) d\zeta_{S_i}(t),\\
-\end{split}
-\\
+% \begin{split}
+&d S_n(t) = r_n F(t) \left(S_n(t)+\xi I_n(t)\right)dt - \theta_{S_n}S_n(t) dt - p_n f_{S_n} S_n(t) P(t)dt -\delta S_n(t)dt + S_n(t) d\zeta_{S_n},\\
+% \end{split}
+% \\
+&d I_n(t) = p_n f_{S_n} S_n(t) Pdt - \theta_{I_n} I_n(t)dt - \delta I_n(t)dt + I_n d\zeta_{I_n},\\
+% \begin{split}
+&d S_i(t) = r_i F(t)\left(S_i(t)+\xi I_i(t)\right)dt - \theta_{S_i} S_i(t) dt - p_i f_{S_i} S_i(t) P(t)dt -  \delta S_i(t)dt + S_i(t) d\zeta_{S_i},\\
+% \end{split}
+% \\
 &d I_i(t) = p_i f_{S_i} S_i(t) P(t)dt - \theta_{I_i} I_i(t)dt - \delta I_i(t)dt + I_i(t) d\zeta_{I_i}(t),\\
 \begin{split}
-&dF(t) = \alpha F(t)\left(1-\frac{F(t)}{K_F}\right)dt - \gamma_n F(t) \left(S_n(t)+\xi I_n(t)\right) dt - \\
-&\quad \quad \quad\gamma_i F(t) \left(S_i(t)+\xi I_i(t)\right) dt - \delta F(t) dt + \mu dt + F(t) d\zeta_F(t),\\
+&dF(t) = \alpha F(t)\left(1-\frac{F(t)}{K_F}\right)dt - \gamma_n F(t) \left(S_n(t)+\xi I_n(t)\right) dt - \gamma_i F(t) \left(S_i(t)+\xi I_i(t)\right) dt\\
+&\quad \quad \quad- \delta F(t) dt + \mu dt + F(t) d\zeta_F,\\
 \end{split}
 \\
 \begin{split}
 &d P(t) = \beta_n d_n I_n(t)dt + \beta_i d_i I_i(t)dt - f_{S_n} S_n(t) P(t)dt - f_{I_n} I_n(t) P(t)dt - f_{S_i} S_i(t) P(t)dt \\
-&\quad \quad \quad- f_{\mathrm{I}_i} I_i(t) P(t)dt - \theta_{\mathrm{p}} P(t)dt - \delta P(t) dt + P(t) d\zeta_{P}(t),\\
+&\quad \quad \quad- f_{\mathrm{I}_i} I_i(t) P(t)dt - \theta_{\mathrm{p}} P(t)dt - \delta P(t) dt + P(t) d\zeta_{P},\\
 \end{split}
 \\
 &d\zeta_{S_n} \sim N\left(0, \sigma_{S_n}^{2}dt\right),\\
@@ -442,12 +440,12 @@ The adaptation of the SIRPF model to SF and SF2 as following allows for a more f
 \end{figure}
 
 \begin{align}
-&d S_n=r_n S_n dt- \theta_{S_n}S_n dt -\delta S_ndt + S_n d\zeta_{S_n}, \\
-&d S_i=r_i S_i dt- \theta_{S_i} S_i dt -\delta S_idt + S_i d\zeta_{S_i}, \\
-&dF=\alpha F\left(1-\frac{F}{K_F}\right)\cdot dt-\gamma_n F S_n \cdot dt - \gamma_i F S_i \cdot dt -\delta F \cdot dt+ \mu \cdot dt +F d \zeta_F.\\
-&\zeta_F \sim N \left( 0, \sigma_F \right) \\
-&\zeta_{S_n} \sim N \left( 0, \sigma_{S_n}  \right) \\
-&\zeta_{S_i} \sim N \left( 0, \sigma_{S_i} \right) 
+&d S_n(t)=r_n S_n(t) dt- \theta_{S_n}S_n(t) dt -\delta S_n(t)dt + S_n(t) d\zeta_{S_n}, \\
+&d S_i(t)=r_i S_i(t) dt- \theta_{S_i} S_i(t) dt -\delta S_i(t)dt + S_i(t) d\zeta_{S_i}, \\
+&dF=\alpha F(t)\left(1-\frac{F(t)}{K_F}\right)\cdot dt-\gamma_n F(t) S_n \cdot dt - \gamma_i F S_i \cdot dt -\delta F(t) \cdot dt+ \mu \cdot dt +F(t) d \zeta_F.\\
+&\zeta_F \sim N \left( 0, \sigma_F^2dt\right) \\
+&\zeta_{S_n} \sim N \left( 0, \sigma_{S_n}^2dt  \right) \\
+&\zeta_{S_i} \sim N \left( 0, \sigma_{S_i}^2dt \right) 
 \end{align}
 
 As a adaption form of SIRPF model, the upper equations show SF2 model, with the meaning of each parameter is the same as the SIRPF model. The only difference is that the SF and SF2 model do not have the parasitic term. While if we only keep one species in SF2 model, the model will become SF model. Utilizing the proposed model facilitates a rigorous way into the influence of algal density on the population dynamics of Daphnia, particularly under conditions of potential food scarcity. This analytical approach allows for the testing of a specific hypothesis: the critical role of algal density in determining the population trajectory of Daphnia. Should the model demonstrate a substantial fit to the observed data, it would substantiate the hypothesis that algal density is a pivotal factor in the observed decline of the Daphnia population, thereby suggesting food limitation as a primary driver. Conversely, a poor fit of the model to the data may indicate that factors other than algal density predominantly govern the population dynamics of Daphnia. In such a scenario, it becomes imperative to explore alternative variables that could significantly influence the population density of Daphnia.\\
