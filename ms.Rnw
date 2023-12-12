@@ -20,7 +20,7 @@
 \usepackage{hyphenat}
 \usepackage{Sweave}
 \bibliographystyle{apalike}
-\newcommand{\blind}{0}
+\newcommand{\blind}{1}
 
 % DON'T change margins - should be 1 inch all around.
 \addtolength{\oddsidemargin}{-.5in}%
@@ -38,9 +38,9 @@
 \if1\blind
 {
   \title{\bf Mechanistic models for panel data: analysis of ecological experiments with four interacting species}
-\author{Bo Yang\\Department of Biostatistics, University of Michigan \And
-        Jesse Wheeler\\Department of Statistics, University of Michigan \And
-        Aaron A. King\\Department of Ecology and Evolutionary Biology \& \\ Center for the Study of Complex Systems, University of Michigan\\\And
+\author{Bo Yang\\Department of Biostatistics, University of Michigan \\
+        Jesse Wheeler\\Department of Statistics, University of Michigan \\
+        Aaron A. King\\Department of Ecology and Evolutionary Biology \& \\ Center for the Study of Complex Systems, University of Michigan\\
         Edward L. Ionides\\Department of Statistics, University of Michigan}
   \maketitle
 } \fi
