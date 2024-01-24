@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.141592653-2.6-1.40.25 (TeX Live 2023) (preloaded format=pdflatex 2023.11.7)  12 DEC 2023 14:17
+This is pdfTeX, Version 3.141592653-2.6-1.40.25 (TeX Live 2023) (preloaded format=pdflatex 2023.11.7)  23 JAN 2024 22:32
 entering extended mode
  restricted \write18 enabled.
  %&-line parsing enabled.
@@ -915,17 +915,12 @@ Underfull \hbox (badness 10000) in paragraph at lines 342--343
  []
 
 [21] [22]
-Underfull \hbox (badness 10000) in paragraph at lines 394--395
-
- []
-
-[23]
 Underfull \hbox (badness 10000) in paragraph at lines 396--397
 
  []
 
-
-Underfull \hbox (badness 10000) in paragraph at lines 400--401
+[23]
+Underfull \hbox (badness 10000) in paragraph at lines 398--399
 
  []
 
@@ -936,22 +931,17 @@ Underfull \hbox (badness 10000) in paragraph at lines 402--403
 
 [24]
 Missing character: There is no ; in font nullfont!
-[25]
-Underfull \hbox (badness 10000) in paragraph at lines 451--452
+
+Underfull \hbox (badness 10000) in paragraph at lines 453--454
 
  []
 
-
-Underfull \hbox (badness 10000) in paragraph at lines 454--455
+[25]
+Underfull \hbox (badness 10000) in paragraph at lines 456--457
 
  []
 
 [26]
-Underfull \hbox (badness 10000) in paragraph at lines 464--465
-
- []
-
-[27]
 Underfull \hbox (badness 10000) in paragraph at lines 466--467
 
  []
@@ -961,22 +951,22 @@ Underfull \hbox (badness 10000) in paragraph at lines 468--469
 
  []
 
-[28]
+[27]
 Underfull \hbox (badness 10000) in paragraph at lines 470--471
 
  []
 
-[29]
+[28]
 Underfull \hbox (badness 10000) in paragraph at lines 472--473
 
  []
 
-
-Underfull \hbox (badness 10000) in paragraph at lines 477--478
+[29]
+Underfull \hbox (badness 10000) in paragraph at lines 474--475
 
  []
 
-[30]
+
 Underfull \hbox (badness 10000) in paragraph at lines 479--480
 
  []
@@ -986,23 +976,28 @@ Underfull \hbox (badness 10000) in paragraph at lines 481--482
 
  []
 
-[31]
+[30]
 Underfull \hbox (badness 10000) in paragraph at lines 483--484
 
  []
 
-(./ms.bbl [32] [33] [34] [35])
+
+Underfull \hbox (badness 10000) in paragraph at lines 485--486
+
+ []
+
+[31] (./ms.bbl [32] [33] [34])
 
 Package natbib Warning: There were undefined citations.
 
-[36] (./ms.aux)
+[35] (./ms.aux)
 Package rerunfilecheck Info: File `ms.out' has not changed.
 (rerunfilecheck)             Checksum: 76366E5AFA62AD25B0457F471BA37AEC;2258.
  ) 
 Here is how much of TeX's memory you used:
- 24449 strings out of 476025
- 464633 string characters out of 5790017
- 1883388 words of memory out of 5000000
+ 24448 strings out of 476025
+ 464624 string characters out of 5790017
+ 1889388 words of memory out of 5000000
  44382 multiletter control sequences out of 15000+600000
  527851 words of font info for 68 fonts, out of 8000000 for 9000
  1141 hyphenation exceptions out of 8191
@@ -1028,10 +1023,10 @@ mf-dist/fonts/type1/public/cm-super/sfbx2074.pfb></usr/local/texlive/2023/texmf
 ist/fonts/type1/public/cm-super/sfrm1200.pfb></usr/local/texlive/2023/texmf-dis
 t/fonts/type1/public/cm-super/sfrm1440.pfb></usr/local/texlive/2023/texmf-dist/
 fonts/type1/public/cm-super/sfti1200.pfb>
-Output written on ms.pdf (36 pages, 399177 bytes).
+Output written on ms.pdf (35 pages, 399344 bytes).
 PDF statistics:
- 524 PDF objects out of 1000 (max. 8388607)
- 434 compressed objects within 5 object streams
- 118 named destinations out of 1000 (max. 500000)
+ 520 PDF objects out of 1000 (max. 8388607)
+ 431 compressed objects within 5 object streams
+ 117 named destinations out of 1000 (max. 500000)
  139 words of extra memory for PDF output out of 10000 (max. 10000000)
 

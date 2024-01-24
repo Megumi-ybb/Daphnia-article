@@ -1061,7 +1061,7 @@ The SIRPF model describes the dynamics of the Susceptible($S$), Infected($I$), R
 \resizebox{8cm}{!}{
 \begin{tikzpicture}[
   square/.style={rectangle, draw=black, minimum width=0.5cm, minimum height=0.5cm, rounded corners=.1cm, fill=blue!8},
-  rhombus/.style={diamond, draw=black, minimum width=0.05cm, minimum height=0.05cm, fill=purple!8,aspect = 1},
+  rhombus/.style={diamond, draw=black, minimum width=0.05cm, minimum height=0.05cm, fill=purple!8,aspect = 1,inner sep=0cm},
   travel/.style={circle, draw=black, minimum width=0.5cm, minimum height=0.5cm, fill=green!8},
   report/.style={shape=regular polygon, regular polygon sides=8, draw, fill=red!8,minimum size=0.6cm,inner sep=0cm},
   bendy/.style={bend left=10},
@@ -1211,49 +1211,58 @@ Each equation intricately ties the state variables to depict the complex dynamic
 
 In the SIRPF2 model, detailed in Table 1, parameters and variables are distinctly annotated for native hosts (subscript $n$), invasive hosts (subscript $i$), and parasite spores (subscript $p$). Intraspecific competition among hosts is conceptualized via the Lotka-Volterra framework, with $r_n$ and $r_i$ denoting respective reproductive rates. Host density growth, influenced by algal density, is posited to be linear, indicating a direct relationship between food availability and Daphnia reproduction. Mortality rates of susceptible hosts are denoted as $\theta_{S_n}$ and $\theta_{S_i}$. The model encapsulates the dynamics of infection through \textit{Metschnikowia bicuspidata} intake, affecting susceptible hosts. This interaction consequently modulates reproductive rates, represented as $\xi r_n$. Infection rates correlate with spore density ($P$) and host ingestion rates ($f_{S_n}$, $f_{S_i}$). Upon death, infected hosts ($\theta_{I_n}$, $\theta_{I_i}$) release spores, which are subsequently subject to ingestion and environmental degradation. The consumption dynamics of food by susceptible and infected hosts are captured by $\gamma_n$ and $\gamma_i$, and food growth is inversely proportional to its carrying capacity ($K_F$), reflective of resource limitation. The model also incorporates a constant removal rate $\delta$, representing the loss of hosts, spores, and food due to external sampling. The constraint of food supply, indicated by a constant rate $\mu = 0.37 \times 10^5$ cells per day, is based on observed declines in Daphnia populations in the panel data, suggesting a pivotal role of food availability in driving population dynamics.\\
 
+<<Setup, include=FALSE,echo=FALSE,results=hide>>=
+ load('all_shared.RData')
+ 
+parms = mif.estimate
+parms = as.data.frame(t(parms))
+
+@
+
+
 \renewcommand{\arraystretch}{0.5}
 \begin{table}[H]
 \centering
-\resizebox{\textwidth}{!}{\begin{tabular}{||c|c |c||}
+\resizebox{\textwidth}{!}{\begin{tabular}{||c|c |c|c||}
  \hline
-Parameter & Definition &Unit\\[0.5ex]
+Parameter & Definition &Unit & Value\\[0.5ex]
 \hline\hline
-$S_j$ & Susceptible host density for species $j$  &$individuals \cdot L ^{-1}$\\
-$I_j$ & Infected host density for species $j$ & $ individuals \cdot L ^{-1}$\\
-$F$& Alga density& $10^5 cells \cdot L ^{-1}$\\
-$P$ & Spore density & $10^3 spores \cdot L ^{-1}$\\
-$K_F$ & Alga carrying capacity&$10^5 cells \cdot L ^{-1} $ \\
-$r_n$ & Native growth rate &$10^{-5} \cdot cells^{-1} \cdot day^{-1}$\\
-$r_i$ & Invasive growth rate &$10^{-5} \cdot cells^{-1} \cdot day^{-1}$\\
-$\theta_{I_n}$ & Native infected host mortality rate&$ day^{-1}$ \\
-$\theta_{I_i}$ & Invasive infected host mortality rate&$ day^{-1}$ \\
-$\theta_{S_i}$ & Invasive susceptible host mortality rate&$ day^{-1}$ \\
-$\theta_{S_n}$ & Native susceptible host mortality rate&$ day^{-1}$ \\
-$\theta_{P}$ & Spore degradation rate&$ day^{-1}$ \\
-$p_n$ &Native probability of infection per spore &$10^{-3} \cdot individuals \cdot spore^{-1} $ \\
-$p_i$ & Invasive probability of infection per spore&$10^{-3} \cdot individuals \cdot spore^{-1} $ \\
-$f_{S_n}$ & Native susceptible host filtering rate&$L \cdot day^{-1} \cdot individuals^{-1} $ \\
-$f_{S_i}$ & Invasive susceptible host filtering rate&$L \cdot day^{-1} \cdot individuals^{-1} $ \\
-$f_{I_n}$ & Native infected host filtering rate&$L \cdot day^{-1} \cdot individuals^{-1} $ \\
-$f_{I_i}$ & Invasive infected host filtering rate&$L \cdot day^{-1} \cdot individuals^{-1} $ \\
-$\delta$ & Sampling rate&$day ^{-1} $ \\
-$\alpha$ & Alga maximum exponential growth rate&$day ^{-1} $ \\
-$\gamma_n$ & Native host consumption rate&$L \cdot inidviduals^{-1} \cdot day ^{-1} $ \\
-$\gamma_i$ & Invsaive host consumption rate&$L \cdot inidviduals^{-1} \cdot day ^{-1} $ \\
-$\mu$ & Alag refilling rate&$10^5 cells \cdot L ^{-1} \cdot day^{-1}$ \\
-$\xi$ &Reduction in infected host reproduction and consumption& $Unitless$ \\
-$\beta_i$ & Spores produced per infected invasive species&$10^3 \cdot spores \cdot individuals^{-1} $ \\
-$\beta_n$ & Spores produced per infected native species&$10^3 \cdot spores \cdot individuals^{-1} $ \\
-$\sigma_{S_n}$ & Standard deviation of brownian motion of susceptible native&$\sqrt{individual \cdot t^{-1}}$ \\
-$\sigma_{S_i}$ & Standard deviation of brownian motion of susceptible invasive &$\sqrt{individual \cdot t^{-1}}$ \\
-$\sigma_{I_n}$ & Standard deviation of brownian motion of infected native&$\sqrt{individual \cdot t^{-1}}$ \\
-$\sigma_{I_i}$ & Standard deviation of brownian motion of infected invasive&$\sqrt{individual \cdot t^{-1}}$ \\
-$\sigma_{F}$ & Standard deviation of brownian motion of alga&$\sqrt{individual \cdot t^{-1}}$ \\
-$\sigma_{P}$ &Standard deviation of brownian motion of parasite &$\sqrt{individual \cdot t^{-1}}$ \\
-$k_{S_n}$ & Overdispersion parameter& $Unitless$ \\
-$k_{S_i}$ &Overdispersion parameter &$Unitless$ \\
-$k_{I_n}$ &Overdispersion parameter &$Unitless$ \\
-$k_{I_i}$ & Overdispersion parameter&$Unitless$ \\[1ex]
+$S_j$ & Susceptible host density for species $j$  &$individuals \cdot L ^{-1}$ & Variable\\
+$I_j$ & Infected host density for species $j$ & $ individuals \cdot L ^{-1}$& Variable\\
+$F$& Alga density& $10^5 cells \cdot L ^{-1}$& Variable\\
+$P$ & Spore density & $10^3 spores \cdot L ^{-1}$& Variable\\
+$K_F$ & Alga carrying capacity&$10^5 cells \cdot L ^{-1} $ & \Sexpr{mysignif(parms$K_F,2)}\\
+$r_n$ & Native growth rate &$10^{-5} \cdot cells^{-1} \cdot day^{-1}$ & \Sexpr{mysignif(parms$rn,2)}\\
+$r_i$ & Invasive growth rate &$10^{-5} \cdot cells^{-1} \cdot day^{-1}$ & \Sexpr{mysignif(parms$ri,2)}\\
+$\theta_{I_n}$ & Native infected host mortality rate&$ day^{-1}$  & \Sexpr{mysignif(parms$theta_In,2)}\\
+$\theta_{I_i}$ & Invasive infected host mortality rate&$ day^{-1}$  & \Sexpr{mysignif(parms$theta_Ii,2)}\\
+$\theta_{S_i}$ & Invasive susceptible host mortality rate&$ day^{-1}$ & \Sexpr{mysignif(parms$theta_Si,2)}\\
+$\theta_{S_n}$ & Native susceptible host mortality rate&$ day^{-1}$ & \Sexpr{mysignif(parms$theta_Sn,2)}\\
+$\theta_{P}$ & Spore degradation rate&$ day^{-1}$ & \Sexpr{mysignif(parms$theta_P,2)}\\
+$p_n$ &Native probability of infection per spore &$10^{-3} \cdot individuals \cdot spore^{-1} $ & \Sexpr{mysignif(parms$probn,2)}\\
+$p_i$ & Invasive probability of infection per spore&$10^{-3} \cdot individuals \cdot spore^{-1} $ & \Sexpr{mysignif(parms$probi,2)}\\
+$f_{S_n}$ & Native susceptible host filtering rate&$L \cdot day^{-1} \cdot individuals^{-1} $ & \Sexpr{mysignif(parms$f_Sn,2)}\\
+$f_{S_i}$ & Invasive susceptible host filtering rate&$L \cdot day^{-1} \cdot individuals^{-1} $& \Sexpr{mysignif(parms$f_Si,2)} \\
+$f_{I_n}$ & Native infected host filtering rate&$L \cdot day^{-1} \cdot individuals^{-1} $& \Sexpr{mysignif(parms$f_In,2)} \\
+$f_{I_i}$ & Invasive infected host filtering rate&$L \cdot day^{-1} \cdot individuals^{-1} $ & \Sexpr{mysignif(parms$f_Ii,2)}\\
+$\delta$ & Sampling rate&$day ^{-1} $ & 0.013\\
+$\alpha$ & Alga maximum exponential growth rate&$day ^{-1} $& \Sexpr{mysignif(parms$alpha,2)} \\
+$\gamma_n$ & Native host consumption rate&$L \cdot inidviduals^{-1} \cdot day ^{-1} $ & \Sexpr{mysignif(parms$gamman,2)}\\
+$\gamma_i$ & Invsaive host consumption rate&$L \cdot inidviduals^{-1} \cdot day ^{-1} $ & \Sexpr{mysignif(parms$gammai,2)}\\
+$\mu$ & Alag refilling rate&$10^5 cells \cdot L ^{-1} \cdot day^{-1}$ & 0.37\\
+$\xi$ &Reduction in infected host reproduction and consumption& $Unitless$ & \Sexpr{mysignif(parms$xi,2)}\\
+$\beta_i$ & Spores produced per infected invasive species&$10^3 \cdot spores \cdot individuals^{-1} $ & \Sexpr{mysignif(parms$betai,2)}\\
+$\beta_n$ & Spores produced per infected native species&$10^3 \cdot spores \cdot individuals^{-1} $ & \Sexpr{mysignif(parms$betan,2)}\\
+$\sigma_{S_n}$ & Standard deviation of brownian motion of susceptible native&$\sqrt{individual \cdot t^{-1}}$ & \Sexpr{mysignif(parms$sigSn,2)}\\
+$\sigma_{S_i}$ & Standard deviation of brownian motion of susceptible invasive &$\sqrt{individual \cdot t^{-1}}$ & \Sexpr{mysignif(parms$sigSi,2)}\\
+$\sigma_{I_n}$ & Standard deviation of brownian motion of infected native&$\sqrt{individual \cdot t^{-1}}$ & \Sexpr{mysignif(parms$sigIn,2)}\\
+$\sigma_{I_i}$ & Standard deviation of brownian motion of infected invasive&$\sqrt{individual \cdot t^{-1}}$ & \Sexpr{mysignif(parms$sigIi,2)}\\
+$\sigma_{F}$ & Standard deviation of brownian motion of alga&$\sqrt{individual \cdot t^{-1}}$ & \Sexpr{mysignif(parms$sigF,2)}\\
+$\sigma_{P}$ &Standard deviation of brownian motion of parasite &$\sqrt{individual \cdot t^{-1}}$ & \Sexpr{mysignif(parms$sigP,2)}\\
+$k_{S_n}$ & Overdispersion parameter& $Unitless$ & \Sexpr{mysignif(parms$k_Sn,2)}\\
+$k_{S_i}$ &Overdispersion parameter &$Unitless$ & \Sexpr{mysignif(parms$k_Si,2)}\\
+$k_{I_n}$ &Overdispersion parameter &$Unitless$ & \Sexpr{mysignif(parms$k_In,2)}\\
+$k_{I_i}$ & Overdispersion parameter&$Unitless$ & \Sexpr{mysignif(parms$k_Ii,2)}\\[1ex]
  \hline
 \end{tabular}}
 \caption{This table shows the units of the parameters of competition SIRPF2 model}
@@ -1269,7 +1278,7 @@ The integration of these stochastic terms within the SIRPF2 framework, as detail
 
 The approach of analyzing Non-parasitized Dynamics through adapted models of the SIRPF framework, such as the Susceptible - Food (SF) and SF2 models, is a strategic method to quantify the impact of environmental resources, like food($F$), on the interactions between native($S_n$) and invasive($S_i$) host species. The SF model focuses on the dynamics between susceptible individuals and food resources, while the SF2 model extends this concept to include Mixed Race Dynamics. This extension is particularly useful in understanding how different species, native and invasive, interact with each other and with their environment in the absence of parasitic factors.\\
 
-The adaptation of the SIRPF model to SF and SF2 as following allows for a more focused examination of the roles that resources play in ecological systems, especially when considering the competition or coexistence between different species. By isolating the food variable in the absence of parasites, these models can provide clearer insights into how food resource availability or scarcity impacts the population dynamics of native and invasive species.\\
+The adaptation of the SIRPF model to SF and SF2 as following allows for a more focused examination of the roles that resources play in ecological systems, especially when considering the competition or coexistence between different species. By isolating the food variable in the absence of parasites, these models can provide clearer insights into how food resource availability or scarcity impacts the population dynamics of native and invasive species.
 
 \begin{figure}
 \begin{center}
