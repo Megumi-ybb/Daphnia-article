@@ -18,7 +18,7 @@
 \usepackage{textcomp}
 \usepackage{tikz}
 \usepackage{hyphenat}
-\usepackage{Sweave}
+%\usepackage{Sweave}
 \bibliographystyle{apalike}
 \newcommand{\blind}{1}
 
@@ -30,7 +30,7 @@
 \addtolength{\topmargin}{-1in}%
 
 \begin{document}
-\SweaveOpts{concordance=TRUE}
+%\SweaveOpts{concordance=TRUE}
 \def\spacingset#1{\renewcommand{\baselinestretch}%
 {#1}\small\normalsize} \spacingset{1}
 
@@ -57,7 +57,7 @@
   \medskip
 } \fi
 
-<<Setup, include=FALSE,echo=FALSE,results=hide>>=
+<<Setup,include=FALSE,echo=FALSE,results="hide">>=
  library(plyr)
  library(reshape2)
  library(magrittr)
@@ -929,7 +929,7 @@ As juveniles rarely exhibit clear signs of infection, only adult Daphnia were us
 \begin{figure}[htbp]
 \centering
 \begin{subfigure}[b]{\linewidth}
-<<echo=FALSE, fig.cap="Plot1", fig.align='center', fig=TRUE, width=14, height=4>>=  
+<<echo=FALSE, fig.cap="Plot1", fig.align="center", fig.width=14, fig.height=4>>=  
    mixed_nopara_data_combined <- do.call(rbind, lapply(1:length(mixed_nopara_data), function(i) {
      cbind(mixed_nopara_data[[i]], group=paste("Trial", trails[i]))
    }))
@@ -959,7 +959,7 @@ As juveniles rarely exhibit clear signs of infection, only adult Daphnia were us
 \caption{Plot of density of hosts in dynamics including both native and invasive host species of Daphnia. The trail A to J represents different buckets in the experiment}
 \end{subfigure}
 \begin{subfigure}[b]{\linewidth}
-<<echo=FALSE, fig.cap="Plot2", fig.align='center', fig=TRUE, width=14, height=4>>=  
+<<echo=FALSE, fig.cap="Plot2", fig.align='center', fig.width=14, fig.height=4>>=  
    mixed_para_data_combined <- do.call(rbind, lapply(1:length(mixed_para_data), function(i) {
      cbind(mixed_para_data[[i]], group=paste("Trial", trails[i]))
    }))
@@ -1211,7 +1211,7 @@ Each equation intricately ties the state variables to depict the complex dynamic
 
 In the SIRPF2 model, detailed in Table 1, parameters and variables are distinctly annotated for native hosts (subscript $n$), invasive hosts (subscript $i$), and parasite spores (subscript $p$). Intraspecific competition among hosts is conceptualized via the Lotka-Volterra framework, with $r_n$ and $r_i$ denoting respective reproductive rates. Host density growth, influenced by algal density, is posited to be linear, indicating a direct relationship between food availability and Daphnia reproduction. Mortality rates of susceptible hosts are denoted as $\theta_{S_n}$ and $\theta_{S_i}$. The model encapsulates the dynamics of infection through \textit{Metschnikowia bicuspidata} intake, affecting susceptible hosts. This interaction consequently modulates reproductive rates, represented as $\xi r_n$. Infection rates correlate with spore density ($P$) and host ingestion rates ($f_{S_n}$, $f_{S_i}$). Upon death, infected hosts ($\theta_{I_n}$, $\theta_{I_i}$) release spores, which are subsequently subject to ingestion and environmental degradation. The consumption dynamics of food by susceptible and infected hosts are captured by $\gamma_n$ and $\gamma_i$, and food growth is inversely proportional to its carrying capacity ($K_F$), reflective of resource limitation. The model also incorporates a constant removal rate $\delta$, representing the loss of hosts, spores, and food due to external sampling. The constraint of food supply, indicated by a constant rate $\mu = 0.37 \times 10^5$ cells per day, is based on observed declines in Daphnia populations in the panel data, suggesting a pivotal role of food availability in driving population dynamics.\\
 
-<<Setup, include=FALSE,echo=FALSE,results=hide>>=
+<<Setup-params,include=FALSE,echo=FALSE,results="hide">>=
  load('all_shared.RData')
  
 parms = mif.estimate
@@ -1340,7 +1340,7 @@ F \sim \operatorname{NBinomial}(n=S / \delta, \tau = k_F), \delta=0.013
 
 \section{Results}
 \label{sec:res}
-<<Setup, include=FALSE,echo=FALSE,results=hide>>=
+<<Setup-results, include=FALSE,echo=FALSE,results="hide">>=
  load('SIRPF_model_estimate.RData')
  
  
