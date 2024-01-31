@@ -18,7 +18,7 @@
 \usepackage{textcomp}
 \usepackage{tikz}
 \usepackage{hyphenat}
-%\usepackage{Sweave}
+\usepackage{Sweave}
 \bibliographystyle{apalike}
 \newcommand{\blind}{1}
 
@@ -30,10 +30,9 @@
 \addtolength{\topmargin}{-1in}%
 
 \begin{document}
-%\SweaveOpts{concordance=TRUE}
+\SweaveOpts{concordance=TRUE}
 \def\spacingset#1{\renewcommand{\baselinestretch}%
 {#1}\small\normalsize} \spacingset{1}
-
 
 \if1\blind
 {
