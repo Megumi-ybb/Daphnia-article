@@ -34,6 +34,7 @@
 \def\spacingset#1{\renewcommand{\baselinestretch}%
 {#1}\small\normalsize} \spacingset{1}
 
+
 \if1\blind
 {
   \title{\bf Mechanistic models for panel data: analysis of ecological experiments with four interacting species}
@@ -56,7 +57,7 @@
   \medskip
 } \fi
 
-<<Setup,include=FALSE,echo=FALSE,results="hide">>=
+<<Setup, include=FALSE,echo=FALSE,results=hide>>=
  library(plyr)
  library(reshape2)
  library(magrittr)
@@ -928,7 +929,7 @@ As juveniles rarely exhibit clear signs of infection, only adult Daphnia were us
 \begin{figure}[htbp]
 \centering
 \begin{subfigure}[b]{\linewidth}
-<<echo=FALSE, fig.cap="Plot1", fig.align="center", fig.width=14, fig.height=4>>=  
+<<echo=FALSE, fig.cap="Plot1", fig.align='center', fig=TRUE, width=14, height=4>>=  
    mixed_nopara_data_combined <- do.call(rbind, lapply(1:length(mixed_nopara_data), function(i) {
      cbind(mixed_nopara_data[[i]], group=paste("Trial", trails[i]))
    }))
@@ -958,7 +959,7 @@ As juveniles rarely exhibit clear signs of infection, only adult Daphnia were us
 \caption{Plot of density of hosts in dynamics including both native and invasive host species of Daphnia. The trail A to J represents different buckets in the experiment}
 \end{subfigure}
 \begin{subfigure}[b]{\linewidth}
-<<echo=FALSE, fig.cap="Plot2", fig.align='center', fig.width=14, fig.height=4>>=  
+<<echo=FALSE, fig.cap="Plot2", fig.align='center', fig=TRUE, width=14, height=4>>=  
    mixed_para_data_combined <- do.call(rbind, lapply(1:length(mixed_para_data), function(i) {
      cbind(mixed_para_data[[i]], group=paste("Trial", trails[i]))
    }))
@@ -1210,12 +1211,35 @@ Each equation intricately ties the state variables to depict the complex dynamic
 
 In the SIRPF2 model, detailed in Table 1, parameters and variables are distinctly annotated for native hosts (subscript $n$), invasive hosts (subscript $i$), and parasite spores (subscript $p$). Intraspecific competition among hosts is conceptualized via the Lotka-Volterra framework, with $r_n$ and $r_i$ denoting respective reproductive rates. Host density growth, influenced by algal density, is posited to be linear, indicating a direct relationship between food availability and Daphnia reproduction. Mortality rates of susceptible hosts are denoted as $\theta_{S_n}$ and $\theta_{S_i}$. The model encapsulates the dynamics of infection through \textit{Metschnikowia bicuspidata} intake, affecting susceptible hosts. This interaction consequently modulates reproductive rates, represented as $\xi r_n$. Infection rates correlate with spore density ($P$) and host ingestion rates ($f_{S_n}$, $f_{S_i}$). Upon death, infected hosts ($\theta_{I_n}$, $\theta_{I_i}$) release spores, which are subsequently subject to ingestion and environmental degradation. The consumption dynamics of food by susceptible and infected hosts are captured by $\gamma_n$ and $\gamma_i$, and food growth is inversely proportional to its carrying capacity ($K_F$), reflective of resource limitation. The model also incorporates a constant removal rate $\delta$, representing the loss of hosts, spores, and food due to external sampling. The constraint of food supply, indicated by a constant rate $\mu = 0.37 \times 10^5$ cells per day, is based on observed declines in Daphnia populations in the panel data, suggesting a pivotal role of food availability in driving population dynamics.\\
 
-<<Setup-params,include=FALSE,echo=FALSE,results="hide">>=
- load('all_shared.RData')
+<<Results, include=FALSE,echo=FALSE,results=hide>>=
+load('all_shared.RData')
  
 parms = mif.estimate
-parms = as.data.frame(t(parms))
+# parms = as.data.frame(t(parms))
 
+parms$K_F = parms$K_F * 1000
+parms$ri = parms$ri * 10
+parms$rn = parms$rn * 10
+parms$theta_Ii = parms$theta_Ii * 10
+parms$theta_In = parms$theta_In * 10
+parms$theta_Si = parms$theta_Si * 10
+parms$theta_Sn = parms$theta_Sn * 10
+parms$theta_P = parms$theta_P * 1000
+parms$probi = parms$probi * 10
+parms$probn = parms$probi * 10
+parms$f_Sn = parms$f_Sn * 10000
+parms$f_Si = parms$f_Si * 10000
+parms$f_In = parms$f_In * 1000
+parms$f_Ii = parms$f_Ii * 1000000
+parms$alpha = parms$alpha * 10000
+parms$gamman = parms$gamman * 1e8
+parms$gammai = parms$gammai * 1e4
+
+parms$sigSi = parms$sigSi * 1e4
+parms$sigIn = parms$sigIn * 1e5
+parms$sigIi = parms$sigIi * 1e5
+parms$sigF = parms$sigF * 10
+parms$sigP = parms$sigP * 100
 @
 
 
@@ -1230,34 +1254,34 @@ $S_j$ & Susceptible host density for species $j$  &$individuals \cdot L ^{-1}$ &
 $I_j$ & Infected host density for species $j$ & $ individuals \cdot L ^{-1}$& Variable\\
 $F$& Alga density& $10^5 cells \cdot L ^{-1}$& Variable\\
 $P$ & Spore density & $10^3 spores \cdot L ^{-1}$& Variable\\
-$K_F$ & Alga carrying capacity&$10^5 cells \cdot L ^{-1} $ & \Sexpr{mysignif(parms$K_F,2)}\\
-$r_n$ & Native growth rate &$10^{-5} \cdot cells^{-1} \cdot day^{-1}$ & \Sexpr{mysignif(parms$rn,2)}\\
-$r_i$ & Invasive growth rate &$10^{-5} \cdot cells^{-1} \cdot day^{-1}$ & \Sexpr{mysignif(parms$ri,2)}\\
-$\theta_{I_n}$ & Native infected host mortality rate&$ day^{-1}$  & \Sexpr{mysignif(parms$theta_In,2)}\\
-$\theta_{I_i}$ & Invasive infected host mortality rate&$ day^{-1}$  & \Sexpr{mysignif(parms$theta_Ii,2)}\\
-$\theta_{S_i}$ & Invasive susceptible host mortality rate&$ day^{-1}$ & \Sexpr{mysignif(parms$theta_Si,2)}\\
-$\theta_{S_n}$ & Native susceptible host mortality rate&$ day^{-1}$ & \Sexpr{mysignif(parms$theta_Sn,2)}\\
-$\theta_{P}$ & Spore degradation rate&$ day^{-1}$ & \Sexpr{mysignif(parms$theta_P,2)}\\
-$p_n$ &Native probability of infection per spore &$10^{-3} \cdot individuals \cdot spore^{-1} $ & \Sexpr{mysignif(parms$probn,2)}\\
-$p_i$ & Invasive probability of infection per spore&$10^{-3} \cdot individuals \cdot spore^{-1} $ & \Sexpr{mysignif(parms$probi,2)}\\
-$f_{S_n}$ & Native susceptible host filtering rate&$L \cdot day^{-1} \cdot individuals^{-1} $ & \Sexpr{mysignif(parms$f_Sn,2)}\\
-$f_{S_i}$ & Invasive susceptible host filtering rate&$L \cdot day^{-1} \cdot individuals^{-1} $& \Sexpr{mysignif(parms$f_Si,2)} \\
-$f_{I_n}$ & Native infected host filtering rate&$L \cdot day^{-1} \cdot individuals^{-1} $& \Sexpr{mysignif(parms$f_In,2)} \\
-$f_{I_i}$ & Invasive infected host filtering rate&$L \cdot day^{-1} \cdot individuals^{-1} $ & \Sexpr{mysignif(parms$f_Ii,2)}\\
+$K_F$ & Alga carrying capacity&$10^2\cdot cells \cdot L ^{-1} $ & \Sexpr{mysignif(parms$K_F,2)}\\
+$r_n$ & Native growth rate &$10^{-6} \cdot cells^{-1} \cdot day^{-1}$ & \Sexpr{mysignif(parms$rn,2)}\\
+$r_i$ & Invasive growth rate &$10^{-6} \cdot cells^{-1} \cdot day^{-1}$ & \Sexpr{mysignif(parms$ri,2)}\\
+$\theta_{I_n}$ & Native infected host mortality rate&$ 10^{-1} \cdot day^{-1}$  & \Sexpr{mysignif(parms$theta_In,2)}\\
+$\theta_{I_i}$ & Invasive infected host mortality rate&$10^{-1} \cdot day^{-1}$  & \Sexpr{mysignif(parms$theta_Ii,2)}\\
+$\theta_{S_i}$ & Invasive susceptible host mortality rate&$10^{-1} \cdot day^{-1}$ & \Sexpr{mysignif(parms$theta_Si,2)}\\
+$\theta_{S_n}$ & Native susceptible host mortality rate&$10^{-1} \cdot day^{-1}$ & \Sexpr{mysignif(parms$theta_Sn,2)}\\
+$\theta_{P}$ & Spore degradation rate&$10^{-1} \cdot  day^{-3}$ & \Sexpr{mysignif(parms$theta_P,2)}\\
+$p_n$ &Native probability of infection per spore &$10^{-4} \cdot individuals \cdot spore^{-1} $ & \Sexpr{mysignif(parms$probn,2)}\\
+$p_i$ & Invasive probability of infection per spore&$10^{-4} \cdot individuals \cdot spore^{-1} $ & \Sexpr{mysignif(parms$probi,2)}\\
+$f_{S_n}$ & Native susceptible host filtering rate&$10^{-4} \cdot L \cdot day^{-1} \cdot individuals^{-1} $ & \Sexpr{mysignif(parms$f_Sn,2)}\\
+$f_{S_i}$ & Invasive susceptible host filtering rate&$10^{-4} \cdot L \cdot day^{-1} \cdot individuals^{-1} $& \Sexpr{mysignif(parms$f_Si,2)} \\
+$f_{I_n}$ & Native infected host filtering rate&$10^{-3} \cdot L \cdot day^{-1} \cdot individuals^{-1} $& \Sexpr{mysignif(parms$f_In,2)} \\
+$f_{I_i}$ & Invasive infected host filtering rate&$10^{-6} \cdot L \cdot day^{-1} \cdot individuals^{-1} $ & \Sexpr{mysignif(parms$f_Ii,2)}\\
 $\delta$ & Sampling rate&$day ^{-1} $ & 0.013\\
-$\alpha$ & Alga maximum exponential growth rate&$day ^{-1} $& \Sexpr{mysignif(parms$alpha,2)} \\
-$\gamma_n$ & Native host consumption rate&$L \cdot inidviduals^{-1} \cdot day ^{-1} $ & \Sexpr{mysignif(parms$gamman,2)}\\
-$\gamma_i$ & Invsaive host consumption rate&$L \cdot inidviduals^{-1} \cdot day ^{-1} $ & \Sexpr{mysignif(parms$gammai,2)}\\
+$\alpha$ & Alga maximum exponential growth rate&$10^{-4} \cdot day ^{-1} $& \Sexpr{mysignif(parms$alpha,2)} \\
+$\gamma_n$ & Native host consumption rate&$10^{-4} \cdot L \cdot inidviduals^{-1} \cdot day ^{-1} $ & \Sexpr{mysignif(parms$gamman,2)}\\
+$\gamma_i$ & Invsaive host consumption rate&$10^{-4} \cdot L \cdot inidviduals^{-1} \cdot day ^{-1} $ & \Sexpr{mysignif(parms$gammai,2)}\\
 $\mu$ & Alag refilling rate&$10^5 cells \cdot L ^{-1} \cdot day^{-1}$ & 0.37\\
 $\xi$ &Reduction in infected host reproduction and consumption& $Unitless$ & \Sexpr{mysignif(parms$xi,2)}\\
 $\beta_i$ & Spores produced per infected invasive species&$10^3 \cdot spores \cdot individuals^{-1} $ & \Sexpr{mysignif(parms$betai,2)}\\
 $\beta_n$ & Spores produced per infected native species&$10^3 \cdot spores \cdot individuals^{-1} $ & \Sexpr{mysignif(parms$betan,2)}\\
 $\sigma_{S_n}$ & Standard deviation of brownian motion of susceptible native&$\sqrt{individual \cdot t^{-1}}$ & \Sexpr{mysignif(parms$sigSn,2)}\\
-$\sigma_{S_i}$ & Standard deviation of brownian motion of susceptible invasive &$\sqrt{individual \cdot t^{-1}}$ & \Sexpr{mysignif(parms$sigSi,2)}\\
-$\sigma_{I_n}$ & Standard deviation of brownian motion of infected native&$\sqrt{individual \cdot t^{-1}}$ & \Sexpr{mysignif(parms$sigIn,2)}\\
-$\sigma_{I_i}$ & Standard deviation of brownian motion of infected invasive&$\sqrt{individual \cdot t^{-1}}$ & \Sexpr{mysignif(parms$sigIi,2)}\\
-$\sigma_{F}$ & Standard deviation of brownian motion of alga&$\sqrt{individual \cdot t^{-1}}$ & \Sexpr{mysignif(parms$sigF,2)}\\
-$\sigma_{P}$ &Standard deviation of brownian motion of parasite &$\sqrt{individual \cdot t^{-1}}$ & \Sexpr{mysignif(parms$sigP,2)}\\
+$\sigma_{S_i}$ & Standard deviation of brownian motion of susceptible invasive &$10^{-4} \cdot \sqrt{individual \cdot t^{-1}}$ & \Sexpr{mysignif(parms$sigSi,2)}\\
+$\sigma_{I_n}$ & Standard deviation of brownian motion of infected native&$10^{-5} \cdot \sqrt{individual \cdot t^{-1}}$ & \Sexpr{mysignif(parms$sigIn,2)}\\
+$\sigma_{I_i}$ & Standard deviation of brownian motion of infected invasive&$10^{-5} \cdot \sqrt{individual \cdot t^{-1}}$ & \Sexpr{mysignif(parms$sigIi,2)}\\
+$\sigma_{F}$ & Standard deviation of brownian motion of alga&$10^{-1} \cdot \sqrt{individual \cdot t^{-1}}$ & \Sexpr{mysignif(parms$sigF,2)}\\
+$\sigma_{P}$ &Standard deviation of brownian motion of parasite &$10^{-2} \cdot \sqrt{individual \cdot t^{-1}}$ & \Sexpr{mysignif(parms$sigP,2)}\\
 $k_{S_n}$ & Overdispersion parameter& $Unitless$ & \Sexpr{mysignif(parms$k_Sn,2)}\\
 $k_{S_i}$ &Overdispersion parameter &$Unitless$ & \Sexpr{mysignif(parms$k_Si,2)}\\
 $k_{I_n}$ &Overdispersion parameter &$Unitless$ & \Sexpr{mysignif(parms$k_In,2)}\\
@@ -1320,7 +1344,7 @@ The adaptation of the SIRPF model to SF and SF2 as following allows for a more f
 \begin{align}
 &d S_n(t)=r_n S_n(t) dt- \theta_{S_n}S_n(t) dt -\delta S_n(t)dt + S_n(t) d\zeta_{S_n}, \\
 &d S_i(t)=r_i S_i(t) dt- \theta_{S_i} S_i(t) dt -\delta S_i(t)dt + S_i(t) d\zeta_{S_i}, \\
-&dF=\alpha F(t)\left(1-\frac{F(t)}{K_F}\right)\cdot dt-\gamma_n F(t) S_n \cdot dt - \gamma_i F S_i \cdot dt -\delta F(t) \cdot dt+ \mu \cdot dt +F(t) d \zeta_F.\\
+&dF(t)=\alpha F(t)\left(1-\frac{F(t)}{K_F}\right)\cdot dt-\gamma_n F(t) S_n \cdot dt - \gamma_i F S_i \cdot dt -\delta F(t) \cdot dt+ \mu \cdot dt +F(t) d \zeta_F.\\
 &\zeta_F \sim N \left( 0, \sigma_F^2dt\right) \\
 &\zeta_{S_n} \sim N \left( 0, \sigma_{S_n}^2dt  \right) \\
 &\zeta_{S_i} \sim N \left( 0, \sigma_{S_i}^2dt \right) 
@@ -1339,7 +1363,7 @@ F \sim \operatorname{NBinomial}(n=S / \delta, \tau = k_F), \delta=0.013
 
 \section{Results}
 \label{sec:res}
-<<Setup-results, include=FALSE,echo=FALSE,results="hide">>=
+<<Setup, include=FALSE,echo=FALSE,results=hide>>=
  load('SIRPF_model_estimate.RData')
  
  
