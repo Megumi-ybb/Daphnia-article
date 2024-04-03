@@ -1,0 +1,1248 @@
+\documentclass[12pt]{article}
+\usepackage{amsmath}
+\usepackage{graphicx}
+\usepackage{enumerate}
+\usepackage[authoryear,numbers]{natbib}
+\usepackage{graphicx}
+\usepackage[english]{babel}
+\usepackage[colorlinks=true, allcolors=blue]{hyperref}
+\usepackage{caption}
+\usepackage{subcaption}
+\usepackage{placeins}
+\usepackage{hyperref}
+\usepackage{float}
+\usepackage[utf8]{inputenc}
+\usepackage{hyphenat}
+\tolerance=1000
+\usepackage{url}
+\usepackage{textcomp}
+\usepackage{tikz}
+\usepackage{hyphenat}
+\usepackage{Sweave}
+\usepackage{tikz}
+\usepackage{float} % For [H] figure placement option
+\usetikzlibrary{arrows.meta, shapes.geometric, positioning}
+\bibliographystyle{apalike}
+\newcommand{\blind}{1}
+
+% DON'T change margins - should be 1 inch all around.
+\addtolength{\oddsidemargin}{-.5in}%
+\addtolength{\evensidemargin}{-1in}%
+\addtolength{\textwidth}{1in}%
+\addtolength{\textheight}{1.7in}%
+\addtolength{\topmargin}{-1in}%
+
+
+\begin{document}
+\SweaveOpts{concordance=TRUE}
+\def\spacingset#1{\renewcommand{\baselinestretch}%
+{#1}\small\normalsize} \spacingset{1}
+
+
+\if1\blind
+{
+  \title{\bf Supplement to "Mechanistic models for panel data: analysis of ecological experiments with four interacting species"}
+\author{Bo Yang\\Department of Biostatistics, University of Michigan \\
+        Jesse Wheeler\\Department of Statistics, University of Michigan \\
+        Aaron A. King\\Department of Ecology and Evolutionary Biology \& \\ Center for the Study of Complex Systems, University of Michigan\\
+        Edward L. Ionides\\Department of Statistics, University of Michigan}
+  \maketitle
+} \fi
+
+\if0\blind
+{
+  \bigskip
+  \bigskip
+  \bigskip
+  \begin{center}
+    {\LARGE\bf Supplement to "Mechanistic models for panel data: analysis of ecological experiments with four interacting species"}
+\end{center}
+  \medskip
+} \fi
+
+<<Setup, include=FALSE,echo=FALSE,results=hide>>=
+ library(plyr)
+ library(reshape2)
+library(patchwork)
+ library(magrittr)
+ library(foreach)
+ library(readxl)
+ library(doParallel)
+ registerDoParallel(cores=36)
+ library(pomp)
+ library(panelPomp)
+ library(ggplot2)
+ library(gridExtra)
+
+ myround <- function (x, digits = 1) {
+  if (length(digits) > 1) {
+    digits <- digits[1]
+    warning("Using only digits[1]")
+  }
+  if (digits < 1) {
+    as.character(round(x,digits))
+  } else {
+    tmp <- sprintf(paste("%.", digits, "f", sep = ""), x)
+    zero <- paste0("0.", paste(rep("0", digits), collapse = ""))
+    tmp[tmp == paste0("-", zero)] <- zero
+    tmp
+  }
+}
+
+  mysignif <- function (x, digits = 1) {
+   myround(x, digits - ceiling(log10(abs(x))))
+  }
+
+ #---------------------------Host Daphnia----------------------------------------------------------------------
+ #----------------load data---------------------------------------------------------------
+load("data/raw_data.RData")
+ #-----------------------------Host with para----------------------------------------------------------------------------
+ host_para <- Mesocosm_data[101:180, ]
+ host_para <- subset(host_para, select = c(rep, day, dent.adult,dent.inf ))
+ host_para <- host_para[80: 1, ]
+ #Convert sampling date to natural date. Samples are collected every 5 days after the #first 7 days.
+ host_para$day = (host_para$day - 1) * 5 + 7
+ host_para_data = list()
+ trails = c("K","L","M","N","O","P","Q","S")
+ for (i in 1: length(trails)){
+   host_para_data[[i]]=subset(host_para, select = c("day", "dent.adult","dent.inf"),
+                              host_para$rep == trails[i])
+ }
+
+ host_para_plot <- ggplot(host_para,aes(x=day,y=dentadult))+
+   geom_line(data=host_para,aes(x=day,y=dent.adult,color = "Susceptible")) +
+   geom_line(data=host_para,aes(x=day,y=dent.inf,color = "Infected")) +
+   facet_wrap(~rep,scales="free")+labs(y = "Daphnia dentifera adult density")
+ #----------------------------------------------------------------------------------------------------------------------
+
+ #-----------------------------Host without para----------------------------------------------------------------------------
+ host_nopara <- Mesocosm_data[1:100, ]
+ host_nopara <- subset(host_nopara, select = c(rep, day, dent.adult))
+ host_nopara <- host_nopara[100: 1, ]
+ #Convert sampling date to natural date. Samples are collected every 5 days after the #first 7 days.
+ host_nopara$day = (host_nopara$day - 1) * 5 + 7
+ host_nopara_data = list()
+ trails = c("A","B","C","D","E","F","G","H","I","J")
+ for (i in 1: length(trails)){
+   host_nopara_data[[i]]=subset(host_nopara, select = c("day", "dent.adult"),
+                                host_nopara$rep == trails[i])
+ }
+
+ host_nopara_plot <- ggplot(host_nopara,aes(x=day,y=dentadult))+
+   geom_line(data=host_nopara,aes(x=day,y=dent.adult)) +
+   facet_wrap(~rep,scales="free")+labs(y = "Daphnia dentifera adult density")
+ #----------------------------------------------------------------------------------------------------------------------
+
+ #-----------------------------Invasive with para----------------------------------------------------------------------------
+ invasive_para <- Mesocosm_data_invasive[101:190, ]
+ invasive_para <- subset(invasive_para, select = c(rep, day, lum.adult,lum.adult.inf))
+ invasive_para <- invasive_para[90: 1, ]
+ #Convert sampling date to natural date. Samples are collected every 5 days after the #first 7 days.
+ invasive_para$day = (invasive_para$day - 1) * 5 + 7
+ invasive_para_data = list()
+ trails = c("L","M","N","O","P","Q","R","S","T")
+ for (i in 1: length(trails)){
+   invasive_para_data[[i]]=subset(invasive_para, select = c("day", "lum.adult","lum.adult.inf"),
+                                  invasive_para$rep == trails[i])
+ }
+
+ invasive_para_plot <- ggplot(invasive_para,aes(x=day,y=lumadult))+
+   geom_line(data=invasive_para,aes(x=day,y=lum.adult,color = "Susceptible")) +
+   geom_line(data=invasive_para,aes(x=day,y=lum.adult.inf,color = "Infected")) +
+   facet_wrap(~rep,scales="free")+labs(y = "Daphnia lumholtzi adult density")
+ #----------------------------------------------------------------------------------------------------------------------
+
+ #-----------------------------Invasive without para----------------------------------------------------------------------------
+ invasive_nopara <- Mesocosm_data_invasive[1:100, ]
+ invasive_nopara <- subset(invasive_nopara, select = c(rep, day, lum.adult))
+ invasive_nopara <- invasive_nopara[100: 1, ]
+ #Convert sampling date to natural date. Samples are collected every 5 days after the #first 7 days.
+ invasive_nopara$day = (invasive_nopara$day - 1) * 5 + 7
+ invasive_nopara_data = list()
+ trails = c("A","B","C","D","E","F","G","H","I","J")
+ for (i in 1: length(trails)){
+   invasive_nopara_data[[i]]=subset(invasive_nopara, select = c("day", "lum.adult"),
+                                    invasive_nopara$rep == trails[i])
+ }
+
+ invasive_nopara_plot <- ggplot(invasive_nopara,aes(x=day,y=lumadult))+
+   geom_line(data=invasive_nopara,aes(x=day,y=lum.adult)) +
+   facet_wrap(~rep,scales="free")+labs(y = "Daphnia lumholtzi adult density")
+ #----------------------------------------------------------------------------------------------------------------------
+
+
+ #-----------------------------Mix with para----------------------------------------------------------------------------
+ mixed_para <- Mesocosm_data_mixed[91:170, ]
+ mixed_para <- subset(mixed_para, select = c(rep, day, dent.adult,dent.inf,lum.adult,lum.adult.inf))
+ mixed_para <- mixed_para[80: 1, ]
+ #Convert sampling date to natural date. Samples are collected every 5 days after the #first 7 days.
+ mixed_para$day = (mixed_para$day - 1) * 5 + 7
+ mixed_para_data = list()
+ trails = c("K","L","M","N","O","P","Q","S")
+ for (i in 1: length(trails)){
+   mixed_para_data[[i]]=subset(mixed_para, select = c("day", "dent.adult","dent.inf","lum.adult","lum.adult.inf"),
+                               mixed_para$rep == trails[i])
+ }
+
+ mixed_para_plot <- ggplot()+
+   geom_line(data=mixed_para,aes(x=day,y=lum.adult,color = "Susceptible lumholtzi"))+
+   geom_line(data=mixed_para,aes(x=day,y=lum.adult.inf,color = "Infected lumholtzi")) +
+   geom_line(data=mixed_para,aes(x=day,y=dent.adult,color = "Susceptible dentifera")) +
+   geom_line(data=mixed_para,aes(x=day,y=dent.inf,color = "Infected dentifera")) +
+   facet_wrap(~rep,scales="free")+labs(y = "Daphnia adult density")
+ #----------------------------------------------------------------------------------------------------------------------
+
+ #-----------------------------Mix without para----------------------------------------------------------------------------
+ mixed_nopara <- Mesocosm_data_mixed[1:90, ]
+ mixed_nopara <- subset(mixed_nopara, select = c(rep, day, dent.adult,lum.adult))
+ mixed_nopara <- mixed_nopara[90: 1, ]
+ #Convert sampling date to natural date. Samples are collected every 5 days after the #first 7 days.
+ mixed_nopara$day = (mixed_nopara$day - 1) * 5 + 7
+ mixed_nopara_data = list()
+ trails = c("A","C","D","E","F","G","H","I","J")
+ for (i in 1: length(trails)){
+   mixed_nopara_data[[i]]=subset(mixed_nopara, select = c("day", "dent.adult","lum.adult"),
+                                 mixed_nopara$rep == trails[i])
+ }
+
+ mixed_nopara_plot <- ggplot()+
+   geom_line(data=mixed_nopara,aes(x=day,y=lum.adult,color = "Lumholtzi"))+
+   geom_line(data=mixed_nopara,aes(x=day,y=dent.adult,color = "Dentifera")) +
+   facet_wrap(~rep,scales="free")+labs(y = "Daphnia adult density")
+ #----------------------------------------------------------------------------------------------------------------------
+ #----------Only lum Model-----------------------------------------------------------------------------------------------
+ invasive_nopara_rpro <- Csnippet("
+                      double Fbirth, Fpred, Fspl, Ffill, Sgrow, Sdeath, Sspl;
+                      double noiB, noiG ;
+                      double delta = 0.013; //fraction of volume replaced day-1
+
+                      noiB = rnorm(0, sigB * sqrt(dt));
+                      noiG = rnorm(0, sigG * sqrt(dt));
+
+
+                      //------------F-------------
+
+                      Fbirth = F * (alpha) * (1 - F/kf) * dt + F * noiB;
+                      Fpred =  S * F * (Beta * dt);
+                      Fspl = F * (delta * dt);
+                      Ffill = 0.37 * dt;
+
+                      //------------S--------------
+                      Sgrow = S * F * (Theta * dt) + S * noiG;
+                      Sdeath = S * (gamma * dt);
+                      Sspl = S * (delta * dt);
+
+                      //M is the total Daphnia sample out
+                      M += Sspl;
+                      F += Fbirth - Fpred + Ffill - Fspl;
+                      S += Sgrow - Sdeath  - Sspl;
+
+                      if (S <= 0.0) {
+                        S = 0.0;
+                        error_count += 1;
+                      }
+                      if (F <= 0) {
+                        F = 0;
+                        error_count += 1000;
+                      }
+                      ")
+ invasive_nopara_init = Csnippet("
+                     S = 3; //3= 45/15L
+                     F = 16.667;
+                     M = 0;
+                     error_count = 0;
+                     ")
+ invasive_nopara_dmeas = Csnippet("
+                 double delta = 0.013;
+                 double tol = 1e-18;
+
+                 if (error_count > 0.0) {
+                   lik = log(tol);
+                 } else {
+                   lik = dpois(lumadult,M,give_log);
+                 }
+                 ")
+ invasive_nopara_rmeas = Csnippet("
+                 //double delta = 0.013;
+                 lumadult = rpois(M);
+                 ")
+ invasive_nopara_pt <- parameter_trans(
+   log = c("alpha", "Beta", "Theta", "gamma", "sigB", "sigG", "kf")
+ )
+ invasive_nopara_pomplist=list()
+ #Not sure about the consumption rate of alga
+ invasive_nopara_parameters = c(1, 0.0002500899,40,2, 10,0.2496332878,0.3)
+ names(invasive_nopara_parameters) =  c("alpha","Beta", "gamma", "Theta","kf","sigB","sigG")
+
+ for (i in 1:10){
+   colnames(invasive_nopara_data[[i]]) <- c('day', 'lumadult')
+   pomp(data = invasive_nopara_data[[i]],
+        times = "day",
+        t0=1,
+        rprocess=euler(invasive_nopara_rpro,delta.t=1/4),
+        rinit = invasive_nopara_init,
+        dmeasure = invasive_nopara_dmeas,
+        rmeasure = invasive_nopara_rmeas,
+        partrans = invasive_nopara_pt,
+        obsnames = "lumadult",
+        accumvars = c("error_count","M"),
+        paramnames = c("alpha", "Beta", "Theta", "gamma", "sigB", "sigG", "kf"),
+        statenames = c("S", "error_count", "F","M")
+   ) -> invasive_nopara_pomplist[[i]]
+   coef(invasive_nopara_pomplist[[i]])=invasive_nopara_parameters
+ }
+ names(invasive_nopara_pomplist)=paste("u", 1:10,sep = "")
+
+ invasive_nopara_shared_parameter =        c(0.0002500899 ,40   ,10    ,0.2496332878,  1, 2)
+ names(invasive_nopara_shared_parameter) = c("Beta","gamma","kf","sigB","alpha", "Theta")
+
+ invasive_nopara_specific_mat = matrix(data = c(rep(0.3, 10)),
+                                       nrow = 1, nc = 10, byrow = T,
+                                       dim = list(rownames = c("sigG"),
+                                                  colnames=c("u1","u2","u3","u4","u5", "u6","u7","u8","u9","u10")))
+
+ invasive_nopara_panelfood = panelPomp(invasive_nopara_pomplist, shared=invasive_nopara_shared_parameter,specific = invasive_nopara_specific_mat)
+
+ #----------------------------------------------------------------------------------------------------------------------
+
+ #----------Only dent Model-----------------------------------------------------------------------------------------------
+ host_nopara_rpro <- Csnippet("
+                      double Fbirth, Fpred, Fspl, Ffill, Sgrow, Sdeath, Sspl;
+                      double noiB, noiG ;
+                      double delta = 0.013; //fraction of volume replaced day-1
+
+                      noiB = rnorm(0, sigB * sqrt(dt));
+                      noiG = rnorm(0, sigG * sqrt(dt));
+
+
+                      //------------F-------------
+
+                      Fbirth = F * (alpha) * (1 - F/kf) * dt + F * noiB;
+                      Fpred =  S * F * (Beta * dt);
+                      Fspl = F * (delta * dt);
+                      Ffill = 0.37 * dt;
+
+                      //------------S--------------
+                      Sgrow = S * F * (Theta * dt) + S * noiG;
+                      Sdeath = S * (gamma * dt);
+                      Sspl = S * (delta * dt);
+
+                      //M is the total Daphnia sample out
+                      M += Sspl;
+                      F += Fbirth - Fpred + Ffill - Fspl;
+                      S += Sgrow - Sdeath  - Sspl;
+
+                      if (S <= 0.0) {
+                        S = 0.0;
+                        error_count += 1;
+                      }
+                      if (F <= 0) {
+                        F = 0;
+                        error_count += 1000;
+                      }
+                      ")
+ # Initial state. Assume t0 = day 4
+ host_nopara_init = Csnippet("
+                     S = 3; //3= 45/15L
+                     F = 16.667;
+                     M = 0;
+                     error_count = 0;
+                     ")
+
+
+
+ host_nopara_dmeas = Csnippet("
+                 double delta = 0.013;
+                 double tol = 1e-18;
+
+                 if (error_count > 0.0) {
+                   lik = log(tol);
+                 } else {
+                   lik = dpois(dentadult,M,give_log);
+                 }
+                 ")
+
+ host_nopara_rmeas = Csnippet("
+                 //double delta = 0.013;
+                 dentadult = rpois(M);
+                 ")
+
+ host_nopara_pt <- parameter_trans(
+   log = c("alpha", "Beta", "Theta", "gamma", "sigB", "sigG", "kf")
+ )
+
+ host_nopara_pomplist=list()
+
+ #Not sure about the consumption rate of alga
+ host_nopara_parameters = c(0.5, 0.0005,0.03,0.1, 8,0.6,0.3)
+ names(host_nopara_parameters) =  c("alpha","Beta", "gamma", "Theta","kf","sigB","sigG")
+
+ for (i in 1:10){
+   colnames(host_nopara_data[[i]]) <- c('day', 'dentadult')
+   pomp(data = host_nopara_data[[i]],
+        times = "day",
+        t0=1,
+        rprocess=euler(host_nopara_rpro,delta.t=1/4),
+        rinit = host_nopara_init,
+        dmeasure = host_nopara_dmeas,
+        rmeasure = host_nopara_rmeas,
+        partrans = host_nopara_pt,
+        obsnames = "dentadult",
+        accumvars = c("error_count","M"),
+        paramnames = c("alpha", "Beta", "Theta", "gamma", "sigB", "sigG", "kf"),
+        statenames = c("S", "error_count", "F","M")
+   ) -> host_nopara_pomplist[[i]]
+   coef(host_nopara_pomplist[[i]])=host_nopara_parameters
+ }
+ names(host_nopara_pomplist)=paste("u", 1:10,sep = "")
+
+ host_nopara_shared_parameter =        c(7.773061e-05  ,2.052644e-01   ,1.790036    ,6.940058e-03  ,1.170719e-01, 0.15)
+ names(host_nopara_shared_parameter) = c("Beta","gamma","kf","sigB","alpha", "Theta")
+
+ host_nopara_specific_mat = matrix(data = c(rep(0.3, 10)),
+                                   nrow = 1, nc = 10, byrow = T,
+                                   dim = list(rownames = c("sigG"),
+                                              colnames=c("u1","u2","u3","u4","u5", "u6","u7","u8","u9","u10")))
+
+ host_nopara_panelfood = panelPomp(host_nopara_pomplist, shared=host_nopara_shared_parameter,specific = host_nopara_specific_mat)
+
+ #----------------------------------------------------------------------------------------------------------------------
+
+ #----------dent par Model----------------------------------------------
+ dent_par_rpro <- Csnippet("
+                      double S_term, I_term, F_term, P_term;
+                      double noiS, noiI, noiF, noiP;
+                      double delta = 0.013; //fraction of volume replaced day-1
+
+                      noiS = rnorm(0, sigS * sqrt(dt));
+                      noiI = rnorm(0, sigI * sqrt(dt));
+                      noiF = rnorm(0, sigF * sqrt(dt));
+                      noiP = rnorm(0, sigP * sqrt(dt));
+
+
+                      //------------s-------------
+                      //Model without death part
+                      S_term = r  * F * (S + zeta * I) * dt - theta_S * S * dt - prob * f_S * S * P * dt - delta * S * dt + S * noiS;
+
+                      //------------I--------------
+
+                      I_term = prob * f_S * S * P * dt - theta_I * I *dt - delta * I * dt + I * noiI;
+
+                      //-----------F---------------
+
+                      F_term = alpha * F * (1 - F/K_F) * dt + F * noiF - gamma * F * (S + zeta * I) * dt - delta * F * dt + 0.37 * dt;
+
+
+                      //----------P---------------
+
+                      P_term = beta * theta_I * I * dt - f_S * S * P * dt - f_I * I * P * dt - theta_P * P * dt - delta * P * dt + P * noiP;
+
+
+                      //T_D and T_I are the S and I Daphnia sample out
+                      F += F_term;
+                      S += S_term;
+                      I += I_term;
+                      P += P_term;
+
+                      T_D += delta * S * dt;
+                      T_I += delta * I * dt;
+
+                      //Trace time
+
+                     if (t - 4.0 < 0.000000001 && t - 4.0 > -0.000000001){
+                      //Initial statement
+                        P += 25;
+                      }
+
+
+                      if (S < 0.0) {
+                        S = 0.0;
+                        error_count += 1;
+                      }
+                      if (F < 0) {
+                        F = 0;
+                        error_count += 1000;
+                      }
+                      if (I < 0) {
+                        I = 0;
+                        error_count += 0.001;
+                      }
+                      if (P < 0 && t > 3.9) {
+                        P = 0;
+                        error_count += 0.000001;
+                      }
+
+
+                      ")
+
+
+ # Initial state. Assume t0 = day 4
+ dent_par_init = Csnippet("
+                     S = 3; //3= 45/15L
+                     F = 16.667;
+                     T_D = 0;
+                     T_I = 0;
+                     I = 0;
+
+                     error_count = 0.0;
+
+                     //add 25 P at day 4
+                     P = 0;
+                     ")
+
+
+ dent_par_dmeas = Csnippet("
+                 double tol = 1e-18;
+
+                  if (error_count > 0.0) {
+                   lik = -100;
+                  }
+                 else{
+                    if(give_log){
+                    lik  = dnbinom_mu(dentadult,k_S,T_D,give_log) +  dnbinom_mu(dentinf,k_I,T_I,give_log);
+                    }
+                    else{
+                    lik  = dnbinom_mu(dentadult,k_S,T_D,give_log) *  dnbinom_mu(dentinf,k_I,T_I,give_log);
+                    }
+                      }
+
+                 ")
+
+ dent_par_rmeas = Csnippet("
+                 dentadult = rnbinom_mu(k_S,T_D);
+                 dentinf = rnbinom_mu(k_I,T_I);
+                 ")
+
+ dent_par_pt <- parameter_trans(
+   log = c("alpha", "beta", "gamma", "sigS", "sigI", "sigF","sigP","K_F","f_S","theta_P","r", "f_I","k_S","k_I"),
+   logit = c('prob',"zeta","theta_S","theta_I")
+ )
+
+ dent_par_pomplist=list()
+
+
+ dent_par_parameters =         c(0.16,   2.8   ,   0.00011,   0.1,    0.1,   0.7,  0.2,     0.01,     0.8,     2.3,  0.001,   0.2,      0.1,  0.06 ,  0.7,   0.003,10,10)
+ names(dent_par_parameters) =  c("alpha", "beta",  "gamma", "sigS", "sigI", "sigF","sigP","theta_S","theta_I","K_F", "f_S",  "theta_P", "r", "zeta", "prob", "f_I","k_S","k_I")
+
+
+
+ for (i in 1:8){
+   colnames(host_para_data[[i]]) <- c('day', 'dentadult', 'dentinf')
+   pomp(data = host_para_data[[i]],
+        times = "day",
+        t0=1,
+        rprocess=euler(dent_par_rpro,delta.t=1/4),
+        rinit = dent_par_init,
+        dmeasure = dent_par_dmeas,
+        rmeasure = dent_par_rmeas,
+        partrans = dent_par_pt,
+        obsnames = c("dentadult", "dentinf"),
+        accumvars = c("error_count","T_D","T_I"),
+        paramnames = c("alpha", "beta",  "gamma", "sigS", "sigI", "sigF","sigP","theta_S","theta_I","K_F", "f_S",  "theta_P", "r", "zeta", "prob", "f_I","k_S","k_I"),
+        statenames = c("S",  "I", "error_count", "F", "T_D","T_I","P")
+   ) -> dent_par_pomplist[[i]]
+   coef(dent_par_pomplist[[i]])=dent_par_parameters
+ }
+ names(dent_par_pomplist)=paste("u", 1:8,sep = "")
+
+ shared_dent_par_parameter =        c(0.0115,   0.39 , 9.628e-06,  0.5447 , 0.1004, 0.04401,    0.3,   0.5798,  0.1489,  0.0008096, 0.004265,    0.1432,  0.003244 ,  0.6551,   0.003584,   8,   8)
+ names(shared_dent_par_parameter) = c("alpha", "sigS",  "gamma",  "sigI",  "sigF", "sigP", "theta_S","theta_I","K_F",      "f_S",  "theta_P",     "r",    "zeta",   "prob",     "f_I","k_S","k_I")
+
+ specific_dent_par_mat = matrix(data = c(rep(2.2,8)),
+                                nrow = 1, nc = 8, byrow = T,
+                                dim = list(rownames = "beta",
+                                           colnames=c("u1","u2","u3","u4","u5", "u6","u7","u8")))
+
+
+ dent_par_panelfood = panelPomp(dent_par_pomplist, shared=shared_dent_par_parameter,specific = specific_dent_par_mat)
+
+
+ #----------------------------------------------------------------------------------------------------------------------
+
+ #----------lum par Model----------------------------------------------
+ lum_par_rpro <- Csnippet("
+                      double S_term, I_term, F_term, P_term;
+                      double noiS, noiI, noiF, noiP;
+                      double delta = 0.013; //fraction of volume replaced day-1
+
+                      noiS = rnorm(0, sigS * sqrt(dt));
+                      noiI = rnorm(0, sigI * sqrt(dt));
+                      noiF = rnorm(0, sigF * sqrt(dt));
+                      noiP = rnorm(0, sigP * sqrt(dt));
+
+                      //------------s-------------
+                      //Model without death part
+                      S_term = r  * F * (S + zeta * I) * dt - theta_S * S * dt - prob * f_S * S * P * dt - delta * S * dt + S * noiS;
+
+                      //------------I--------------
+
+                      I_term = prob * f_S * S * P * dt - theta_I * I *dt - delta * I * dt + I * noiI;
+
+                      //-----------F---------------
+
+                      F_term = alpha * F * (1 - F/K_F) * dt + F * noiF - gamma * F * (S + zeta * I) * dt - delta * F * dt + 0.37 * dt;
+
+
+                      //----------P---------------
+
+                      P_term = beta * theta_I * I * dt - f_S * S * P * dt - f_I * I * P * dt - theta_P * P * dt - delta * P * dt + P * noiP;
+
+
+                      //T_D and T_I are the S and I Daphnia sample out
+                      F += F_term;
+                      S += S_term;
+                      I += I_term;
+                      P += P_term;
+
+                      if (S < 0.0) {
+                        S = 0.0;
+                        error_count += 1;
+                      }
+                      if (F < 0) {
+                        F = 0;
+                        error_count += 1000;
+                      }
+                      if (I < 0) {
+                        I = 0;
+                        error_count += 0.001;
+                      }
+                      if (P < 0) {
+                        P = 0;
+                        error_count += 0.000001;
+                      }
+
+                      T_D += delta * S * dt;
+                      T_I += delta * I * dt;
+
+                      //Trace time
+
+                     if (t - 4.00 < 0.1 && t - 4.00 > -0.1){
+                      //Initial statement
+                        P += 25;
+                      }
+
+                     // Rprintf(\"P=%f\\n\",P);
+
+                      ")
+
+ lum_par_init = Csnippet("
+                     S = 3; //3= 45/15L
+                     F = 16.667;
+                     T_D = 0;
+                     T_I = 0;
+                     I = 0;
+
+                     error_count = 0.0;
+
+                     //add 25 P at day 4
+                     P = 0;
+                     ")
+
+ lum_par_dmeas = Csnippet("
+                 double tol = 1e-18;
+
+                  if (error_count > 0.0) {
+                   lik = -100;
+                  }
+                 else{
+                    if(give_log){
+                    lik  = dnbinom_mu(lumadult,k_S,T_D,give_log) +  dnbinom_mu(luminf,k_I,T_I,give_log);
+                    }
+                    else{
+                    lik  = dnbinom_mu(lumadult,k_S,T_D,give_log) *  dnbinom_mu(luminf,k_I,T_I,give_log);
+                    }
+                      }
+
+                 ")
+
+ lum_par_rmeas = Csnippet("
+                 lumadult = rnbinom_mu(k_S,T_D);
+                 luminf = rnbinom_mu(k_I,T_I);
+                 ")
+
+ lum_par_pt <- parameter_trans(
+   log = c("alpha", "beta", "gamma", "sigS", "sigI", "sigF","sigP","K_F","f_S","theta_P","r", "f_I","k_S","k_I"),
+   logit = c('prob',"zeta","theta_S","theta_I")
+ )
+
+ lum_par_pomplist=list()
+
+
+ lum_par_parameters =         c(0.16,   2.8   ,   0.00011,   0.1,    0.1,   0.7,  0.2,     0.01,     0.8,     2.3,  0.001,   0.2,      0.1,  0.06 ,  0.7,   0.003,10,10)
+ names(lum_par_parameters) =  c("alpha", "beta",  "gamma", "sigS", "sigI", "sigF","sigP","theta_S","theta_I","K_F", "f_S",  "theta_P", "r", "zeta", "prob", "f_I","k_S","k_I")
+
+
+
+ for (i in 1:9){
+   colnames(invasive_para_data[[i]]) <- c('day', 'lumadult', 'luminf')
+   pomp(data = invasive_para_data[[i]],
+        times = "day",
+        t0=1,
+        rprocess=euler(lum_par_rpro,delta.t=1/4),
+        rinit = lum_par_init,
+        dmeasure = lum_par_dmeas,
+        rmeasure = lum_par_rmeas,
+        partrans = lum_par_pt,
+        obsnames = c("lumadult", "luminf"),
+        accumvars = c("error_count","T_D","T_I"),
+        paramnames = c("alpha", "beta",  "gamma", "sigS", "sigI", "sigF","sigP","theta_S","theta_I","K_F", "f_S",  "theta_P", "r", "zeta", "prob", "f_I","k_S","k_I"),
+        statenames = c("S",  "I", "error_count", "F", "T_D","T_I","P")
+   ) -> lum_par_pomplist[[i]]
+   coef(lum_par_pomplist[[i]])=lum_par_parameters
+ }
+ names(lum_par_pomplist)=paste("u", 1:9,sep = "")
+
+
+ lum_par_shared_parameter =        c(0.0115,   0.39 , 9.628e-06,  0.5447 , 0.1004, 0.04401,    0.3,   0.5798,  0.1489,  0.0008096, 0.004265,    0.1432,  0.003244 ,  0.6551,   0.003584,   8,   8)
+ names(lum_par_shared_parameter) = c("alpha", "sigS",  "gamma",  "sigI",  "sigF", "sigP", "theta_S","theta_I","K_F",      "f_S",  "theta_P",     "r",    "zeta",   "prob",     "f_I","k_S","k_I")
+
+ lum_par_specific_mat = matrix(data = c(rep(2.2,9)),
+                               nrow = 1, nc = 9, byrow = T,
+                               dim = list(rownames = "beta",
+                                          colnames=c("u1","u2","u3","u4","u5", "u6","u7","u8","u9")))
+
+
+ lum_par_panelfood = panelPomp(lum_par_pomplist, shared=lum_par_shared_parameter,specific = lum_par_specific_mat)
+
+ #----------------------------------------------------------------------------------------------------------------------
+ #----------mixed par Model-----------------------------------------------------------------------------------------------
+ mix_par_rpro <- Csnippet("
+                      double Sn_term, In_term, F_term, P_term , Si_term, Ii_term;
+                      double noiSn, noiIn, noiSi , noiIi ,noiF, noiP;
+                      double delta = 0.013; //fraction of volume replaced day-1
+
+                      noiSn = rnorm(0, sigSn * sqrt(dt));
+                      noiIn = rnorm(0, sigIn * sqrt(dt));
+                      noiSi = rnorm(0, sigSi * sqrt(dt));
+                      noiIi = rnorm(0, sigIi * sqrt(dt));
+                      noiF = rnorm(0, sigF * sqrt(dt));
+                      noiP = rnorm(0, sigP * sqrt(dt));
+
+
+                      //------------Sn-------------
+                      Sn_term = rn  * F * (Sn + xi * In) * dt - theta_Sn * Sn * dt -  probn * f_Sn * Sn * P * dt - delta * Sn * dt + Sn * noiSn;
+
+                      //------------In--------------
+
+                      In_term = probn * f_Sn * Sn * P * dt - theta_In * In *dt - delta * In * dt + In * noiIn;
+
+                      //------------Si-------------
+                      Si_term = ri  * F * (Si + xi * Ii) * dt - theta_Si * Si * dt -  probi * f_Si * Si * P * dt - delta * Si * dt + Si * noiSi;
+
+                      //------------Ii--------------
+
+                      Ii_term = probi * f_Si * Si * P * dt - theta_Ii * Ii *dt - delta * Ii * dt + Ii * noiIi;
+
+
+                      //-----------F---------------
+
+                      F_term = alpha * F * (1 - F/K_F) * dt + F * noiF - gamman * F * (Sn + xi * In) * dt - gammai * F * (Si + xi * Ii) * dt - delta * F * dt + 0.37 * dt;
+
+
+                      //----------P---------------
+
+                      P_term = betan * theta_In * In * dt + betai * theta_Ii * Ii * dt - f_Sn * Sn * P * dt - f_In * In * P * dt - f_Si * Si * P * dt - f_Ii * Ii * P * dt- theta_P * P * dt - delta * P * dt + P * noiP;
+
+
+                      //T_D and T_I are the S and I Daphnia sample out
+                      F += F_term;
+                      Sn += Sn_term;
+                      In += In_term;
+                      Si += Si_term;
+                      Ii += Ii_term;
+                      P += P_term;
+
+                      //Trace time
+
+                     if (t - 4.0 < 0.001 && t - 4.0 > -0.001){
+                      //Initial statement
+                        P += 25;
+                      }
+
+
+                      if (Sn < 0.0) {
+                        Sn = 0.0;
+                        error_count += 1;
+                      }
+                      if (Si < 0.0) {
+                        Si = 0.0;
+                        error_count += 1000000;
+                      }
+                      if (F < 0) {
+                        F = 0;
+                        error_count += 1000;
+                      }
+                      if (In < 0) {
+                        In = 0;
+                        error_count += 0.001;
+                      }
+                      if (Ii < 0) {
+                        Ii = 0;
+                        error_count += 0.000000001;
+                      }
+                      if (P < 0 && t > 3.9) {
+                        P = 0;
+                        error_count += 0.000001;
+                      }
+
+                      T_Sn += delta * Sn * dt;
+                      T_In += delta * In * dt;
+                      T_Si += delta * Si * dt;
+                      T_Ii += delta * Ii * dt;
+
+                      ")
+
+ # Initial state. Assume t0 = day 4
+ mix_par_init = Csnippet("
+                     Sn = 2.333; //2.3333 = 35/15L
+                     Si = 0.667; //0.667 = 10/15L
+                     F = 16.667;
+                     T_Sn = 0;
+                     T_Si = 0;
+                     T_In = 0;
+                     T_Ii = 0;
+                     In = 0;
+                     Ii = 0;
+
+                     error_count = 0.0;
+
+                     //add 25 P at day 4
+                     P = 0;
+                     ")
+
+
+
+ mix_par_dmeas = Csnippet("
+                 double tol = 1e-18;
+
+                 if (error_count > 0.0) {
+                   lik = -100;
+                  }
+                 else{
+                    if(give_log){
+                    lik  = dnbinom_mu(lumadult,k_Si,T_Si,give_log) +  dnbinom_mu(luminf,k_Ii,T_Ii,give_log) + dnbinom_mu(dentadult,k_Sn,T_Sn,give_log) +  dnbinom_mu(dentinf,k_In,T_In,give_log);
+                    }
+                    else{
+                    lik  = dnbinom_mu(lumadult,k_Si,T_Si,give_log) *  dnbinom_mu(luminf,k_Ii,T_Ii,give_log) * dnbinom_mu(dentadult,k_Sn,T_Sn,give_log) *  dnbinom_mu(dentinf,k_In,T_In,give_log);
+                    }
+                      }
+
+
+
+
+                 ")
+
+ mix_par_rmeas = Csnippet("
+                 //double delta = 0.013;
+                 dentadult = rnbinom_mu(k_Sn,T_Sn);
+                 dentinf = rnbinom_mu(k_In,T_In);
+                 lumadult = rnbinom_mu(k_Si,T_Si);
+                 luminf = rnbinom_mu(k_Ii,T_Ii);
+                 ")
+
+ mix_par_pt <- parameter_trans(
+   #Without death part
+   log = c("alpha", "betan", "betai", "gamman", "gammai", "sigSn", "sigIn", "sigSi", "sigIi", "sigF","sigP","K_F","f_Sn","f_Si", "f_In","f_Ii","rn","ri","k_Ii","k_In","k_Sn","k_Si"),
+   logit = c("probn","probi","xi","theta_Sn","theta_In","theta_Si","theta_Ii","theta_P")
+ )
+
+ mix_par_pomplist=list()
+
+ mix_par_parameters =         c(0.16,    0.3,   17,    3  ,    0.0001,  8.34e-06,     0.4,    0.5,    0.8,     0.2,     0.01,  0.2,    0.15,       0.07 ,   0.2,       0.01,    0.096     ,1  ,0.0006,0.001 , 0.0035 ,0.003 , 0.2  , 0.4, 0.6  ,0.8 ,8,8,8,8)
+ names(mix_par_parameters) =  c("alpha","xi", "betan", "betai", "gamman", "gammai", "sigSn", "sigIn", "sigSi", "sigIi", "sigF","sigP","theta_Sn","theta_In","theta_Si","theta_P","theta_Ii","K_F","f_Sn","f_Si", "f_In","f_Ii","rn","ri","probn","probi","k_Ii","k_In","k_Sn","k_Si")
+
+
+ for (i in 1:8){
+   colnames(mixed_para_data[[i]]) <- c('day', 'dentadult', 'dentinf','lumadult','luminf')
+   pomp(data = mixed_para_data[[i]],
+        times = "day",
+        t0=1,
+        rprocess=euler(mix_par_rpro,delta.t=1/4),
+        rinit = mix_par_init,
+        dmeasure = mix_par_dmeas,
+        rmeasure = mix_par_rmeas,
+        partrans = mix_par_pt,
+        obsnames = c("dentadult", "dentinf","lumadult","luminf"),
+        accumvars = c("error_count","T_Sn","T_In","T_Si","T_Ii"),
+        paramnames = c("alpha","xi", "betan", "betai", "gamman", "gammai", "sigSn", "sigIn", "sigSi", "sigIi", "sigF","sigP","theta_Sn","theta_In","theta_Si","theta_P","theta_Ii","K_F","f_Sn","f_Si", "f_In","f_Ii","rn","ri","probn","probi","k_Ii","k_In","k_Sn","k_Si"),
+        statenames = c("Sn",  "In", "Si",  "Ii","error_count", "F", "T_Sn","T_In","T_Si","T_Ii","P")
+   ) -> mix_par_pomplist[[i]]
+   coef(mix_par_pomplist[[i]])=mix_par_parameters
+ }
+ names(mix_par_pomplist)=paste("u", 1:8,sep = "")
+
+ mix_par_shared_parameter = c("alpha" = 0.045,"xi" = 0.0005,"gamman" = 9.4e-05,"gammai" =0.00075, "sigSn" = 0.15, "sigIn" = 0.033, "sigSi" =0.28, "sigIi" = 0.03,
+                              "sigF" = 0.08, "theta_Sn" = 0.19,"theta_In" = 0.62,"theta_Si" = 0.22,"theta_P" = 0.08,"theta_Ii" = 0.48,"K_F" = 0.3,"f_Sn" = 0.001,"f_Si" = 0.0011,"f_In" = 0.0012,"f_Ii" = 0.00023,"rn" = 0.25,
+                              "ri" = 0.29,"probn" = 0.93,"probi" = 0.96,"k_Ii" = 0.38,"k_In" = 0.83,"k_Sn" = 11,"k_Si"= 570,"sigP" = 0.02, "betan" = 2, "betai" = 2)
+
+ mix_par_panelfood = panelPomp(mix_par_pomplist, shared=mix_par_shared_parameter)
+@
+
+\tableofcontents
+\newpage
+
+\section{Model Diagram}
+
+Dynamic models addressed in this manuscript are comprehensively delineated through the descriptions provided within the main text, augmented by the supplementary details furnished in this section. Notwithstanding their complete mathematical specification, visual diagrams of dynamic systems frequently facilitate comprehension of the underlying equations. Hence, this section presents a model diagram, which corresponds to the SF model. It is imperative to recognize that, given the models are articulated through their mathematical formulations and numerical implementations, these diagrams do not constitute unique visual depictions. There exist alternative visualizations that might further aid in elucidating the models discussed herein.
+
+\begin{figure}[H]
+\begin{center}
+\resizebox{5cm}{!}{%
+\begin{tikzpicture}[
+  square/.style={
+    rectangle,
+    draw=black,
+    minimum width=1cm,
+    minimum height=1cm,
+    rounded corners=.1cm,
+    fill=blue!8
+  },
+  report/.style={
+    shape=regular polygon,
+    regular polygon sides=8,
+    draw,
+    fill=red!8,
+    minimum size=1cm,
+    inner sep=0cm
+  },
+  rhombus/.style={
+    diamond,
+    draw=black,
+    minimum width=0.1cm,
+    minimum height=0.1cm,
+    fill=purple!8,
+    aspect = 1
+  },
+  >={Stealth[length=1.5mm,width=1.5mm]} % Corrected arrow tip definition
+]
+
+\node (S) at (-0.5,0) [square] {$S$};
+\node (F) at (2.5,0) [report] {$F$};
+\node (R) at (2.5,2) [square] {$R$};
+
+\draw [->] (F) --  (S);
+\draw [->] (F) --  (R);
+\draw [->] (S) --  (R);
+\draw (S) edge[loop above] node {} (S);
+\draw (F) edge[loop below] node {} (F);
+
+
+\end{tikzpicture}%
+}
+\end{center}
+\vspace{-5mm}
+\caption{A flow diagram for the SF model. In this system, either species of \textit{Daphnia} and the food resource contribute to reproduction, depicted as self-recycling loops for $S$, and $F$. As time progresses, individuals in $F$, $S$ transition to the $R$ state, signifying mortality.}
+\label{fig:SF}
+\end{figure}
+
+
+\newpage
+
+\section{Markov chain and differential equation interpretations in the dynamics}
+\subsection{SF Model}
+The dynamics of the system are governed by a set of differential equations that describe the interactions between different species and their environment. The model consists of equations that represent the growth and interactions of \textit{algae}  (denoted as $F$) and two types of \textit{Daphnia} populations, $S_n$ and $S_i$, under certain conditions.
+
+\begin{align}
+&d S(t)=r S(t) dt- \theta_{S}S(t) dt -\delta S(t)dt + S(t) d\zeta_{S} \\
+&dF(t)=\alpha F(t)\left(1-\frac{F(t)}{K_F}\right)\cdot dt-\gamma_n F(t) S(t) \cdot dt -\delta F(t) \cdot dt+ \mu \cdot dt +F(t) d \zeta_F\\
+&\zeta_F \sim N \left( 0, \sigma_F^2dt\right) \\
+&\zeta_{S} \sim N \left( 0, \sigma_{S}^2dt  \right)
+\end{align}
+
+This model includes parameters such as $\gamma$, $\alpha$, $\sigma_F$, $\sigma_S$, $\theta$, $\beta$, $\delta$, and $k_f$, which are integral to understanding the dynamics between \textit{algae}  and \textit{Daphnia} populations. The parameters $\alpha$ and $K_F$ represent the growth rate and carrying capacity of \textit{algae} , respectively, while $\beta$ and $\theta$ describe the consumption rate of \textit{algae}  by Daphnia and the growth rate of \textit{Daphnia}, respectively. The death rate of \textit{Daphnia} is denoted by $\gamma$. The terms $\zeta_F$ and $\zeta_S$ introduce randomness into the growth processes of \textit{algae}  and \textit{Daphnia}, modeling the stochastic nature of the ecosystem.
+In this model, we set the initial condition to be $M = 0, S = 3$ and $F = 16.667$ by Searles et al. For ease of understanding the model equations, we separate the differential equations (12)-(16)  into distinct parts that each correspond to meaningful ecological phenomena:
+\paragraph{Alga}
+
+
+The change of the density of alga can be viewed as
+        \begin{flalign}
+        & dF_{birth}(t) = \alpha F(t)\left(1-\frac{F(t)}{k_f}\right) dt + F(t) d\zeta_F\\
+        &dF_{cons}(t) = \beta F(t) S(t) dt\\
+        &dF_{spl}(t) = \delta F(t) dt\\
+        &dF_{refill}(t) = \mu dt\\
+        &dF(t) = dF_{birth}(t) - dF_{cons}(t) - dF_{spl}(t) + dF_{refill}(t)
+        \end{flalign}
+In these equations, $\alpha$ represents the growth rate; $k_f$ is the carrying capacity; $\zeta_F$ is the noise term; and $\beta$ represents the rate at which alga are consumed. All of these are treated as unknown parameters. $\delta$ and $\mu$ are fixed parameters with $\delta = 0.013$ and $\mu = 0.37$, which model the food supply rate. We split the change of alga density (dF) into four parts: equation (17) represents the change of population due to the birth of alga and Brownian noise term; equation (18) is the amount of alga that is consumed by \textit{Daphnia}; equations (19) and (20) indicate that change of alga density due to the process of alga refill and sampling. Together, these four equations explain the processes and causes of the changes in alga population density.
+
+\paragraph{\textit{Daphnia}}
+
+
+The change of the density of \textit{Daphnia} can be viewed as
+        \begin{flalign}
+        &dS_{grow}(t) = \theta S(t) F(t) dt+S(t) d\zeta_S\\
+        &dS_{death}(t) = \gamma S(t)dt\\
+        &dS_{spl}(t) = \delta S(t)dt\\
+        &dS(t) =  S_{grow}(t) - S_{death}(t) - S_{spl}(t)
+        \end{flalign}
+In these equations, $\theta$ is the growth rate, $\zeta_S$ is the noise term, and $\gamma$ is the death rate, all of which are unknown parameters. $\delta$ is a fixed parameter with $\delta = 0.013$. We split the change of \textit{Daphnia} density (dS) into three parts. The equation (22) represents the change of population due to the birth of \textit{Daphnia} and Brownian noise terms. While the equation (23) shows the amount of alga that is consumed by \textit{Daphnia}, which will make the density decrease. The equation (24) indicates that change of \textit{Daphnia} density due to the process of  sampling. These three equations explain the processes and causes of the changes in \textit{Daphnia} population density.\\
+
+This model includes 9 parameters: $\gamma,\alpha,\sigma_F,\sigma_S,\theta,\beta,\delta, \mu$ and $k_f$. Among those parameters, $\alpha$ represents the rate of growth of algae. $k_f$ shows the carrying capacity of algae in each bucket. $\beta$ is the consumption rate of algae by certain species of \textit{Daphnia}, $\theta$ shows the rate of growth of \textit{Daphnia} with certain types of food and $\gamma$ is the rate of death of certain species of \textit{Daphnia}. Similar to the previous Lotka-Volterra model, we treat $\delta$ as a constant equal to 0.013 and $\mu = 0.37$ as a constant that implies the food refilling rate according to the experimental settings. $\zeta_F$ and $\zeta_S$ are Brownian noise terms, which show the randomness of the dynamic system. They are induced by a normal distribution with 0 mean,and $\sigma_F^2 \cdot dt, \sigma_S^2 \cdot dt$ to be variance respectively. Unlike the previous model, this model restricts the total food supply, more closely mimicking the experimental setting. One explanation for the observed precipitous decline in \textit{Daphnia} population density is that there was a meaningful decline to the food supply throughout the experiment. Therefore the model equations permit both a natural decline in food levels and an increase of \textit{Daphnia} food corresponding to the food supply rate of the experiment. Based on the experimental manipulations, we treated the food supply rate as a constant $\mu = 0.37 \cdot 10^5$ cells per day.\\
+
+Using this model, we can investigate how the population dynamics of \textit{Daphnia} are influenced by the density of algae with the condition that food levels without any food management may not be sufficient to describe \textit{Daphnia} population dynamics. If the data are better explained using this model than the alternative hypotheses, it can be concluded that the density of algae plays a significant role in \textit{Daphnia} population dynamics and the lack of food is potentially the reason of the precipitous decline in \textit{Daphnia} population, as other factors may not obviously affect this treatment. Alternatively, if the model does not fit the data well, it's possible that the alga may not be the main reason that led to the change of population of \textit{Daphnia}, which means other possible factors that may affect the population density of \textit{Daphnia} should be considered.\\
+
+Incorporating stochastic elements ($\zeta$) into the model adheres to stochastic differential equation (SDE) frameworks, offering a refined perspective on population dynamics that includes the effect of random environmental variations. These components, depicted as Gaussian white noise, add complexity to the model by portraying unpredictable external and internal influences on the populations. The variances $\sigma_{S}^{2}$ and $\sigma_{F}^{2}$ serve to measure the intensity of stochastic disturbances on both susceptible and infected population groups, alongside their alimentary resources. This methodology surpasses traditional deterministic models, providing a comprehensive and authentic analysis of ecological system dynamics.
+
+\subsection{SF2 Model}
+The following SDEs further explores the dynamics between two types of \textit{Daphnia} populations ($S_n$ and $S_i$) and their food source, \textit{algae} ($F$), incorporating stochastic elements to reflect the randomness in natural processes:
+
+\begin{align}
+&d S_n(t)=r_n S_n(t) dt- \theta_{S_n}S_n(t) dt -\delta S_n(t)dt + S_n(t) d\zeta_{S_n} \\
+&d S_i(t)=r_i S_i(t) dt- \theta_{S_i} S_i(t) dt -\delta S_i(t)dt + S_i(t) d\zeta_{S_i} \\
+&dF(t)=\alpha F(t)\left(1-\frac{F(t)}{K_F}\right)\cdot dt-\gamma_n F(t) S_n(t) \cdot dt - \gamma_i F(t) S_i(t) \cdot dt \nonumber \\
+&\quad \quad -\delta F(t) \cdot dt + \mu \cdot dt +F(t) d \zeta_F\\
+&\zeta_F \sim N \left( 0, \sigma_F^2dt\right) \\
+&\zeta_{S_n} \sim N \left( 0, \sigma_{S_n}^2dt  \right) \\
+&\zeta_{S_i} \sim N \left( 0, \sigma_{S_i}^2dt \right)
+\end{align}
+
+These equations delineate the dynamics of a mixed \textit{Daphnia} population, incorporating growth rates ($r_n$, $r_i$), the impact of \textit{algae} consumption ($\theta_{S_n}$, $\theta_{S_i}$), and mortality rates ($\delta$). The stochastic components ($\zeta_{S_n}$, $\zeta_{S_i}$, and $\zeta_F$) introduce environmental variability into the model, rendering a more nuanced depiction of ecosystem dynamics. Such analysis illuminates the intricate relationships between species and their habitats, enhancing our comprehension of ecological complexities.
+
+The incorporation of stochastic terms ($\zeta$) aligns with the principles of stochastic differential equations (SDEs), presenting a nuanced view of population dynamics that accommodates for random environmental fluctuations. These elements, represented as Gaussian white noise, enrich the model by simulating unpredictable environmental and internal processes that impact the populations. The specified variances—$\sigma_{S_n}^{2}, \sigma_{S_n}^{2}$ and $\sigma_{F}^{2}$—quantify the magnitude of noise affecting both the susceptible and infected populations, as well as their food sources. This approach transcends the limitations of deterministic models, offering a layered and realistic exploration of the forces shaping ecological systems.
+
+\subsection{SIRPF Model}
+The SIRPF model presented encapsulates the dynamics between susceptible ($S$) and infected ($I$) populations, their food source ($F$), and a parasite population ($P$). Each differential equation accounts for various biological and ecological processes, augmented with stochastic terms to capture the inherent randomness of these systems.
+
+{
+\small
+\begin{align}
+&d S(t) = r F(t)\left(S(t)+\xi I(t)\right)dt - \theta_{S}S(t) dt - p f_{S} S(t) Pdt - \delta S(t)dt + S(t) d\zeta_{S}\\
+&d I(t) = p f_{S} S(t) Pdt - \theta_{I} I(t)dt - \delta I(t)dt + I(t) d\zeta_{I}\\
+&dF(t) = \alpha F(t)\left(1-\frac{F(t)}{K_F}\right)dt - \gamma F(t) \left(S(t)+\xi I(t)\right) dt - \delta F(t) dt + \mu dt + F(t) d\zeta_F\\
+&d P(t) = \beta \theta_I I(t)dt - f_{S} S(t) P(t)dt - f_{I} I(t) P(t)dt - \theta_{\mathrm{p}} P(t)dt - \delta P(t) dt + P(t) d\zeta_{P}\\
+&d\zeta_{S} \sim N\left(0, \sigma_{S}^{2}dt\right)\\
+&d\zeta_{I} \sim N\left(0, \sigma_{I}^{2}dt\right)\\
+&d\zeta_{F} \sim N\left(0, \sigma_{F}^{2}dt\right)\\
+&d\zeta_{P} \sim N\left(0, \sigma_{P}^{2}dt\right)
+\end{align}
+}
+
+This model intricately details the interactions and feedback mechanisms between the populations under study. The equations describe the growth or decline of each population, modulated by both deterministic factors, such as reproduction and predation rates, and stochastic factors, captured through the $d\zeta$ terms representing environmental variability and other unpredictable influences. The inclusion of stochastic terms ($\zeta$) adheres to the principles of stochastic differential equations (SDEs), offering a realistic portrayal of population dynamics by accounting for random fluctuations. These terms, modeled as Gaussian white noise, add depth to the analysis by allowing for the simulation of random processes affecting the populations, thereby extending beyond the deterministic skeleton of classical models. The variances $\sigma_{S}^{2}, \sigma_{I}^{2}, \sigma_{F}^{2},$ and $\sigma_{P}^{2}$ encapsulate the intensity of environmental and internal process noise affecting susceptible individuals, infected individuals, food resources, and parasite, respectively.
+
+This model's capacity to intertwine biological realism with statistical rigor makes it a potent tool for understanding complex ecological interactions. By examining the system's sensitivity to parameter variations and the stochastic components' impact. Furthermore, statistical analysis of model outcomes, such as likelihood-based methods for parameter estimation or Bayesian inference for uncertainty quantification, can provide deeper understanding and predictive power, essential for conservation efforts and the management of biological resources.
+
+\subsection{SIRPF2 Model}
+The SIRPF2 model outlined below incorporates a detailed analysis of the interactions between two \textit{Daphnia} populations (denoted as $S_n$ and $S_i$), their infected counterparts ($I_n$ and $I_i$), algae ($F$), and parasites ($P$). This model aims to capture the nuanced dynamics of ecological and epidemiological processes within a shared environment.
+{
+\small
+\begin{align}
+% \begin{split}
+&d S_n(t) = r_n F(t) \left(S_n(t)+\xi I_n(t)\right)dt - \theta_{S_n}S_n(t) dt - p_n f_{S_n} S_n(t) P(t)dt -\delta S_n(t)dt + S_n(t) d\zeta_{S_n}\\
+% \end{split}
+% \\
+&d I_n(t) = p_n f_{S_n} S_n(t) Pdt - \theta_{I_n} I_n(t)dt - \delta I_n(t)dt + I_n d\zeta_{I_n}\\
+% \begin{split}
+&d S_i(t) = r_i F(t)\left(S_i(t)+\xi I_i(t)\right)dt - \theta_{S_i} S_i(t) dt - p_i f_{S_i} S_i(t) P(t)dt -  \delta S_i(t)dt + S_i(t) d\zeta_{S_i}\\
+% \end{split}
+% \\
+&d I_i(t) = p_i f_{S_i} S_i(t) P(t)dt - \theta_{I_i} I_i(t)dt - \delta I_i(t)dt + I_i(t) d\zeta_{I_i}(t)\\
+\begin{split}
+&dF(t) = \alpha F(t)\left(1-\frac{F(t)}{K_F}\right)dt - \gamma_n F(t) \left(S_n(t)+\xi I_n(t)\right) dt - \gamma_i F(t) \left(S_i(t)+\xi I_i(t)\right) dt\\
+&\quad \quad \quad- \delta F(t) dt + \mu dt + F(t) d\zeta_F\\
+\end{split}
+\\
+\begin{split}
+&d P(t) = \beta_n \theta_{I_n} I_n(t)dt + \beta_i \theta_{I_i} I_i(t)dt - f_{S_n} S_n(t) P(t)dt - f_{I_n} I_n(t) P(t)dt - f_{S_i} S_i(t) P(t)dt \\
+&\quad \quad \quad- f_{\mathrm{I}_i} I_i(t) P(t)dt - \theta_{\mathrm{p}} P(t)dt - \delta P(t) dt + P(t) d\zeta_{P}\\
+\end{split}
+\\
+&d\zeta_{S_n} \sim N\left(0, \sigma_{S_n}^{2}dt\right)\\
+&d\zeta_{I_n} \sim N\left(0, \sigma_{I_n}^{2}dt\right)\\
+&d\zeta_{S_i} \sim N\left(0, \sigma_{S_i}^{2}dt\right)\\
+&d\zeta_{I_i} \sim N\left(0, \sigma_{I_i}^{2}dt\right)\\
+&d\zeta_{F} \sim N\left(0, \sigma_{F}^{2}dt\right)\\
+&d\zeta_{P} \sim N\left(0, \sigma_{P}^{2}dt\right)
+\end{align}
+}
+This model is characterized by a series of stochastic differential equations that represent the temporal dynamics of each population and their interactions. The terms $r_n$ and $r_i$ denote the intrinsic growth rates of the non-infected \textit{Daphnia} populations, while $\theta_{S_n}$, $\theta_{S_i}$, $\theta_{I_n}$, and $\theta_{I_i}$ represent the respective mortality rates due to natural causes other than disease. The interaction between \textit{Daphnia} populations and the algae is modeled by the consumption rates $\gamma_n$ and $\gamma_i$, which also affect the \textit{algae}'s growth dynamics along with its intrinsic growth rate $\alpha$ and carrying capacity $K_F$.\\
+
+In the presented SDE model, the dynamics of susceptible and infected \textit{Daphnia} populations, alongside their \textit{algae} food source and parasites, are intricately modeled to incorporate both deterministic biological interactions and stochastic environmental variability. The inclusion of stochastic terms, denoted by $d\zeta$, adheres to a normal distribution with zero mean and variance proportional to $dt$, effectively embedding white noise into the system. This statistical approach allows the model to capture the inherent unpredictability of ecological processes, offering a nuanced representation that transcends traditional deterministic models. The SDE framework facilitates the exploration of population dynamics under random environmental influences, emphasizing the significance of stochasticity in ecological interactions.
+
+\section{Simulations}
+For the model and parameters swarm that result in the best AIC, we did 20 simulations on each unit of the panel data\. Viewing the figure, almost all simulations capture the data well. And the estimation of parameters swarm used for this simulation is shown in section Parameter.
+\subsection{SF Models}
+\FloatBarrier
+\begin{figure}[h!]
+    \centering
+    \includegraphics[width=10cm]{data/dent_nopara_sim.png}
+    \caption{Simulation of Daphnia dentifera of SF dynamics}
+    \label{fig:dent_nopara_sim}
+\end{figure}
+\FloatBarrier
+\FloatBarrier
+\begin{figure}[h!]
+    \centering
+    \includegraphics[width=10cm]{data/lum_nopara_sim.png}
+    \caption{Simulation of Daphnia lumholtzi of SF dynamics}
+    \label{fig:lum_nopara_sim}
+\end{figure}
+\FloatBarrier
+\FloatBarrier
+\subsection{SF2 Models}
+\begin{figure}[h!]
+    \centering
+    \includegraphics[width=10cm]{data/sim_mixed_nopar.png}
+    \caption{Simulation of Daphnia dentifera of SF2 dynamics}
+    \label{fig:sim_mixed_nopar}
+\end{figure}
+\FloatBarrier
+\FloatBarrier
+\begin{figure}[h!]
+    \centering
+    \includegraphics[width=10cm]{data/sim_mixed_nopar_si.png}
+    \caption{Simulation of Daphnia lumholtzi of SF2 dynamics}
+    \label{fig:sim_mixed_nopar_si}
+\end{figure}
+\FloatBarrier
+
+\subsection{SIRPF Models}
+\FloatBarrier
+\begin{figure}[h!]
+    \centering
+    \includegraphics[width=10cm]{data/dent_para_s_sim.png}
+    \caption{Simulation of Susceptible Daphnia dentifera of SIRPF dynamics}
+    \label{fig:dent_para_s_sim}
+\end{figure}
+\FloatBarrier
+\FloatBarrier
+\begin{figure}[h!]
+    \centering
+    \includegraphics[width=10cm]{data/dent_para_i_sim.png}
+    \caption{Simulation of Infected Daphnia dentifera of SIRPF dynamics}
+    \label{fig:dent_para_i_sim}
+\end{figure}
+\FloatBarrier
+\FloatBarrier
+\begin{figure}[h!]
+    \centering
+    \includegraphics[width=10cm]{data/lum_para_s_sim.png}
+    \caption{Simulation of Susceptible Daphnia lumholtzi of SIRPF dynamics}
+    \label{fig:lum_para_s_sim}
+\end{figure}
+\FloatBarrier
+\FloatBarrier
+\begin{figure}[h!]
+    \centering
+    \includegraphics[width=10cm]{data/lum_par_i_sim.png}
+    \caption{Simulation of Infected Daphnia lumholtzi of SIRPF dynamics}
+    \label{fig:lum_par_i_sim}
+\end{figure}
+\FloatBarrier
+
+
+\subsection{SIRPF2 Models}
+\FloatBarrier
+\begin{figure}[h!]
+    \centering
+    \includegraphics[width=10cm]{data/sim_mixed_par_sn.png}
+    \caption{Simulation of Susceptible Daphnia dentifera of SIRPF2 dynamics}
+    \label{fig:sim_mixed_par}
+\end{figure}
+\FloatBarrier
+\FloatBarrier
+\begin{figure}[h!]
+    \centering
+    \includegraphics[width=10cm]{data/sim_mixed_par_si.png}
+    \caption{Simulation of Susceptible Daphnia lumholtzi of SIRPF2 dynamics}
+    \label{fig:sim_mixed_nopar_si}
+\end{figure}
+\FloatBarrier
+\FloatBarrier
+\begin{figure}[h!]
+    \centering
+    \includegraphics[width=10cm]{data/sim_mixed_par_in.png}
+    \caption{Simulation of Infected Daphnia dentifera of SIRPF2 dynamics}
+    \label{fig:sim_mixed_par_in}
+\end{figure}
+\FloatBarrier
+\FloatBarrier
+\begin{figure}[h!]
+    \centering
+    \includegraphics[width=10cm]{data/sim_mixed_par_ii.png}
+    \caption{Simulation of Infected Daphnia lumholtzi of SIRPF2 dynamics}
+    \label{fig:sim_mixed_par_ii}
+\end{figure}
+\FloatBarrier
+\section{Results and Tables}
+\begin{table}[h!]
+\centering
+\begin{tabular}{||c |c |c |c||}
+ \hline
+Specific parameters & dimension & max log-likelihood & AIC \\ [0.5ex]
+\hline\hline
+All shared    & Sexpr{all_dim}         & \Sexpr{d_all_ll}        & \Sexpr{d_all_ll}   \\
+  $\sigma_S$   &   \Sexpr{one_dim}      & \Sexpr{d_sG_ll}          & \Sexpr{d_sG_ll}  \\
+$\sigma_S,\theta$   & \Sexpr{two_dim}        & \Sexpr{d_sGT_ll}          & \Sexpr{d_sGT_ll}    \\
+  $\sigma_S,\beta$    & \Sexpr{two_dim}        & \Sexpr{d_sGB_ll}         & \Sexpr{d_sGB_ll}    \\
+  $\sigma_S,\alpha$   & \Sexpr{two_dim}        & \Sexpr{d_sGa_ll}         & \Sexpr{d_sGa_ll}  \\
+  $\sigma_S,\gamma$   & \Sexpr{two_dim}        & \Sexpr{d_sGg_ll}          & \Sexpr{d_sGg_ll}  \\
+  $\sigma_S,\sigma_F$ & \Sexpr{two_dim}        & \Sexpr{d_sBsG_ll}          & \Sexpr{d_sBsG_ll}  \\
+$\sigma_S,k_f$      & \Sexpr{two_dim}        & \Sexpr{d_sGk_ll}          & \Sexpr{d_sGk_ll} \\
+  $\alpha, \sigma_F$  & \Sexpr{two_dim}        & \Sexpr{d_sBa_ll}          & \Sexpr{d_sBa_ll} \\
+  $\alpha, \beta$     & \Sexpr{two_dim}        & \Sexpr{d_aB_ll}            & \Sexpr{d_aB_ll}   \\
+     $\alpha$   & \Sexpr{one_dim}        & \Sexpr{d_a_ll}          & \Sexpr{d_a_ll}  \\
+  $\beta,\gamma$      & \Sexpr{two_dim}        & \Sexpr{d_Bg_ll}         & \Sexpr{d_Bg_ll} \\
+ $\gamma, \sigma_F$  & \Sexpr{two_dim}        & \Sexpr{d_sBg_ll}          & \Sexpr{d_sBg_ll}  \\
+  $\beta, \sigma_F$   & \Sexpr{two_dim}        & \Sexpr{d_sBB_ll}          & \Sexpr{d_sBB_ll}  \\
+  $\sigma_F$   & \Sexpr{one_dim}        & \Sexpr{d_sB_ll}          & \Sexpr{d_sB_ll}  \\
+  $\alpha,\theta$     & \Sexpr{two_dim}        & \Sexpr{d_aT_ll}         & \Sexpr{d_aT_ll}     \\
+  $\theta, \gamma$    & \Sexpr{two_dim}        & \Sexpr{d_Tg_ll}          & \Sexpr{d_Tg_ll} \\
+  $\alpha,\gamma$     & \Sexpr{two_dim}        & \Sexpr{d_ag_ll}          & \Sexpr{d_ag_ll} \\
+ $\beta$   & \Sexpr{one_dim}        & \Sexpr{d_B_ll}         & \Sexpr{d_B_ll}  \\
+ $k_f, \sigma_F$     & \Sexpr{two_dim}        & \Sexpr{d_sBk_ll}          & \Sexpr{d_sBk_ll}  \\
+  $\theta , \beta$    & \Sexpr{two_dim}        & \Sexpr{d_TB_ll}          & \Sexpr{d_TB_ll}  \\
+  $\theta$   & \Sexpr{one_dim}        & \Sexpr{d_T_ll}          & \Sexpr{d_T_ll}    \\
+$\theta , \beta$    & \Sexpr{two_dim}        & \Sexpr{d_TB_ll}          &  \Sexpr{d_TB_ll}\\
+  $\alpha, \theta$    & \Sexpr{two_dim}        & \Sexpr{d_aT_ll}          & \Sexpr{d_aT_ll}  \\
+     $k_f$   & \Sexpr{one_dim}        & \Sexpr{d_k_ll}          & \Sexpr{d_k_ll}   \\
+  $\alpha , k_f$      & \Sexpr{two_dim}        & \Sexpr{d_ak_ll}            & \Sexpr{d_ak_ll}   \\
+  $\gamma , k_f$      & \Sexpr{two_dim}        & \Sexpr{d_gk_ll}          & \Sexpr{d_gk_ll} \\
+  $\theta , k_f$      & \Sexpr{two_dim}        & \Sexpr{d_Tk_ll}          & \Sexpr{d_Tk_ll} \\
+  $\beta , k_f$       & \Sexpr{two_dim}        & \Sexpr{d_Bk_ll}         & \Sexpr{d_Bk_ll} \\[1ex]
+\hline
+\end{tabular}
+\caption{This table includes the parameter comparison for SIR model with food management, which was newly introduced fitted to \textit{Daphnia dentifera} with different choices of parameters to be either unit specific or shared}
+\label{Table:1}
+\end{table}
+
+\begin{table}[h!]
+\centering
+\begin{tabular}{||c |c |c |c||}
+ \hline
+Specific parameters & dimension & max log-likelihood & AIC \\ [0.5ex]
+\hline\hline
+All shared    & Sexpr{all_dim}         & \Sexpr{d_all_ll}        & \Sexpr{d_all_ll}   \\
+  $\sigma_S$   &   \Sexpr{one_dim}      & \Sexpr{d_sG_ll}          & \Sexpr{d_sG_ll}  \\
+$\sigma_S,\theta$   & \Sexpr{two_dim}        & \Sexpr{d_sGT_ll}          & \Sexpr{d_sGT_ll}    \\
+  $\sigma_S,\beta$    & \Sexpr{two_dim}        & \Sexpr{d_sGB_ll}         & \Sexpr{d_sGB_ll}    \\
+  $\sigma_S,\alpha$   & \Sexpr{two_dim}        & \Sexpr{d_sGa_ll}         & \Sexpr{d_sGa_ll}  \\
+  $\sigma_S,\gamma$   & \Sexpr{two_dim}        & \Sexpr{d_sGg_ll}          & \Sexpr{d_sGg_ll}  \\
+  $\sigma_S,\sigma_F$ & \Sexpr{two_dim}        & \Sexpr{d_sBsG_ll}          & \Sexpr{d_sBsG_ll}  \\
+$\sigma_S,k_f$      & \Sexpr{two_dim}        & \Sexpr{d_sGk_ll}          & \Sexpr{d_sGk_ll} \\
+  $\alpha, \sigma_F$  & \Sexpr{two_dim}        & \Sexpr{d_sBa_ll}          & \Sexpr{d_sBa_ll} \\
+  $\alpha, \beta$     & \Sexpr{two_dim}        & \Sexpr{d_aB_ll}            & \Sexpr{d_aB_ll}   \\
+     $\alpha$   & \Sexpr{one_dim}        & \Sexpr{d_a_ll}          & \Sexpr{d_a_ll}  \\
+  $\beta,\gamma$      & \Sexpr{two_dim}        & \Sexpr{d_Bg_ll}         & \Sexpr{d_Bg_ll} \\
+ $\gamma, \sigma_F$  & \Sexpr{two_dim}        & \Sexpr{d_sBg_ll}          & \Sexpr{d_sBg_ll}  \\
+  $\beta, \sigma_F$   & \Sexpr{two_dim}        & \Sexpr{d_sBB_ll}          & \Sexpr{d_sBB_ll}  \\
+  $\sigma_F$   & \Sexpr{one_dim}        & \Sexpr{d_sB_ll}          & \Sexpr{d_sB_ll}  \\
+  $\alpha,\theta$     & \Sexpr{two_dim}        & \Sexpr{d_aT_ll}         & \Sexpr{d_aT_ll}     \\
+  $\theta, \gamma$    & \Sexpr{two_dim}        & \Sexpr{d_Tg_ll}          & \Sexpr{d_Tg_ll} \\
+  $\alpha,\gamma$     & \Sexpr{two_dim}        & \Sexpr{d_ag_ll}          & \Sexpr{d_ag_ll} \\
+ $\beta$   & \Sexpr{one_dim}        & \Sexpr{d_B_ll}         & \Sexpr{d_B_ll}  \\
+ $k_f, \sigma_F$     & \Sexpr{two_dim}        & \Sexpr{d_sBk_ll}          & \Sexpr{d_sBk_ll}  \\
+  $\theta , \beta$    & \Sexpr{two_dim}        & \Sexpr{d_TB_ll}          & \Sexpr{d_TB_ll}  \\
+  $\theta$   & \Sexpr{one_dim}        & \Sexpr{d_T_ll}          & \Sexpr{d_T_ll}    \\
+$\theta , \beta$    & \Sexpr{two_dim}        & \Sexpr{d_TB_ll}          &  \Sexpr{d_TB_ll}\\
+  $\alpha, \theta$    & \Sexpr{two_dim}        & \Sexpr{d_aT_ll}          & \Sexpr{d_aT_ll}  \\
+     $k_f$   & \Sexpr{one_dim}        & \Sexpr{d_k_ll}          & \Sexpr{d_k_ll}   \\
+  $\alpha , k_f$      & \Sexpr{two_dim}        & \Sexpr{d_ak_ll}            & \Sexpr{d_ak_ll}   \\
+  $\gamma , k_f$      & \Sexpr{two_dim}        & \Sexpr{d_gk_ll}          & \Sexpr{d_gk_ll} \\
+  $\theta , k_f$      & \Sexpr{two_dim}        & \Sexpr{d_Tk_ll}          & \Sexpr{d_Tk_ll} \\
+  $\beta , k_f$       & \Sexpr{two_dim}        & \Sexpr{d_Bk_ll}         & \Sexpr{d_Bk_ll} \\[1ex]
+\hline
+\end{tabular}
+\caption{This table includes the parameter comparison for SIR model with food management, which was newly introduced fitted to \textit{Daphnia lumholtzi} with different choices of parameters to be either unit specific or shared}
+\label{Table:2}
+\end{table}
+
+\end{document}
