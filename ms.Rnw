@@ -70,7 +70,7 @@ library(patchwork)
  library(panelPomp)
  library(ggplot2)
  library(gridExtra)
- 
+
  myround <- function (x, digits = 1) {
   if (length(digits) > 1) {
     digits <- digits[1]
@@ -89,7 +89,7 @@ library(patchwork)
   mysignif <- function (x, digits = 1) {
    myround(x, digits - ceiling(log10(abs(x))))
   }
- 
+
  #---------------------------Host Daphnia----------------------------------------------------------------------
  #----------------load data---------------------------------------------------------------
 load("data/raw_data.RData")
@@ -105,13 +105,13 @@ load("data/raw_data.RData")
    host_para_data[[i]]=subset(host_para, select = c("day", "dent.adult","dent.inf"),
                               host_para$rep == trails[i])
  }
- 
+
  host_para_plot <- ggplot(host_para,aes(x=day,y=dentadult))+
    geom_line(data=host_para,aes(x=day,y=dent.adult,color = "Susceptible")) +
    geom_line(data=host_para,aes(x=day,y=dent.inf,color = "Infected")) +
    facet_wrap(~rep,scales="free")+labs(y = "Daphnia dentifera adult density")
  #----------------------------------------------------------------------------------------------------------------------
- 
+
  #-----------------------------Host without para----------------------------------------------------------------------------
  host_nopara <- Mesocosm_data[1:100, ]
  host_nopara <- subset(host_nopara, select = c(rep, day, dent.adult))
@@ -124,12 +124,12 @@ load("data/raw_data.RData")
    host_nopara_data[[i]]=subset(host_nopara, select = c("day", "dent.adult"),
                                 host_nopara$rep == trails[i])
  }
- 
+
  host_nopara_plot <- ggplot(host_nopara,aes(x=day,y=dentadult))+
    geom_line(data=host_nopara,aes(x=day,y=dent.adult)) +
    facet_wrap(~rep,scales="free")+labs(y = "Daphnia dentifera adult density")
  #----------------------------------------------------------------------------------------------------------------------
- 
+
  #-----------------------------Invasive with para----------------------------------------------------------------------------
  invasive_para <- Mesocosm_data_invasive[101:190, ]
  invasive_para <- subset(invasive_para, select = c(rep, day, lum.adult,lum.adult.inf))
@@ -142,13 +142,13 @@ load("data/raw_data.RData")
    invasive_para_data[[i]]=subset(invasive_para, select = c("day", "lum.adult","lum.adult.inf"),
                                   invasive_para$rep == trails[i])
  }
- 
+
  invasive_para_plot <- ggplot(invasive_para,aes(x=day,y=lumadult))+
    geom_line(data=invasive_para,aes(x=day,y=lum.adult,color = "Susceptible")) +
    geom_line(data=invasive_para,aes(x=day,y=lum.adult.inf,color = "Infected")) +
    facet_wrap(~rep,scales="free")+labs(y = "Daphnia lumholtzi adult density")
  #----------------------------------------------------------------------------------------------------------------------
- 
+
  #-----------------------------Invasive without para----------------------------------------------------------------------------
  invasive_nopara <- Mesocosm_data_invasive[1:100, ]
  invasive_nopara <- subset(invasive_nopara, select = c(rep, day, lum.adult))
@@ -161,13 +161,13 @@ load("data/raw_data.RData")
    invasive_nopara_data[[i]]=subset(invasive_nopara, select = c("day", "lum.adult"),
                                     invasive_nopara$rep == trails[i])
  }
- 
+
  invasive_nopara_plot <- ggplot(invasive_nopara,aes(x=day,y=lumadult))+
    geom_line(data=invasive_nopara,aes(x=day,y=lum.adult)) +
    facet_wrap(~rep,scales="free")+labs(y = "Daphnia lumholtzi adult density")
  #----------------------------------------------------------------------------------------------------------------------
- 
- 
+
+
  #-----------------------------Mix with para----------------------------------------------------------------------------
  mixed_para <- Mesocosm_data_mixed[91:170, ]
  mixed_para <- subset(mixed_para, select = c(rep, day, dent.adult,dent.inf,lum.adult,lum.adult.inf))
@@ -180,7 +180,7 @@ load("data/raw_data.RData")
    mixed_para_data[[i]]=subset(mixed_para, select = c("day", "dent.adult","dent.inf","lum.adult","lum.adult.inf"),
                                mixed_para$rep == trails[i])
  }
- 
+
  mixed_para_plot <- ggplot()+
    geom_line(data=mixed_para,aes(x=day,y=lum.adult,color = "Susceptible lumholtzi"))+
    geom_line(data=mixed_para,aes(x=day,y=lum.adult.inf,color = "Infected lumholtzi")) +
@@ -188,7 +188,7 @@ load("data/raw_data.RData")
    geom_line(data=mixed_para,aes(x=day,y=dent.inf,color = "Infected dentifera")) +
    facet_wrap(~rep,scales="free")+labs(y = "Daphnia adult density")
  #----------------------------------------------------------------------------------------------------------------------
- 
+
  #-----------------------------Mix without para----------------------------------------------------------------------------
  mixed_nopara <- Mesocosm_data_mixed[1:90, ]
  mixed_nopara <- subset(mixed_nopara, select = c(rep, day, dent.adult,lum.adult))
@@ -201,7 +201,7 @@ load("data/raw_data.RData")
    mixed_nopara_data[[i]]=subset(mixed_nopara, select = c("day", "dent.adult","lum.adult"),
                                  mixed_nopara$rep == trails[i])
  }
- 
+
  mixed_nopara_plot <- ggplot()+
    geom_line(data=mixed_nopara,aes(x=day,y=lum.adult,color = "Lumholtzi"))+
    geom_line(data=mixed_nopara,aes(x=day,y=dent.adult,color = "Dentifera")) +
@@ -270,7 +270,7 @@ load("data/raw_data.RData")
  #Not sure about the consumption rate of alga
  invasive_nopara_parameters = c(1, 0.0002500899,40,2, 10,0.2496332878,0.3)
  names(invasive_nopara_parameters) =  c("alpha","Beta", "gamma", "Theta","kf","sigB","sigG")
- 
+
  for (i in 1:10){
    colnames(invasive_nopara_data[[i]]) <- c('day', 'lumadult')
    pomp(data = invasive_nopara_data[[i]],
@@ -289,19 +289,19 @@ load("data/raw_data.RData")
    coef(invasive_nopara_pomplist[[i]])=invasive_nopara_parameters
  }
  names(invasive_nopara_pomplist)=paste("u", 1:10,sep = "")
- 
+
  invasive_nopara_shared_parameter =        c(0.0002500899 ,40   ,10    ,0.2496332878,  1, 2)
  names(invasive_nopara_shared_parameter) = c("Beta","gamma","kf","sigB","alpha", "Theta")
- 
+
  invasive_nopara_specific_mat = matrix(data = c(rep(0.3, 10)),
                                        nrow = 1, nc = 10, byrow = T,
                                        dim = list(rownames = c("sigG"),
                                                   colnames=c("u1","u2","u3","u4","u5", "u6","u7","u8","u9","u10")))
- 
+
  invasive_nopara_panelfood = panelPomp(invasive_nopara_pomplist, shared=invasive_nopara_shared_parameter,specific = invasive_nopara_specific_mat)
- 
+
  #----------------------------------------------------------------------------------------------------------------------
- 
+
  #----------Only dent Model-----------------------------------------------------------------------------------------------
  host_nopara_rpro <- Csnippet("
                       double Fbirth, Fpred, Fspl, Ffill, Sgrow, Sdeath, Sspl;
@@ -345,9 +345,9 @@ load("data/raw_data.RData")
                      M = 0;
                      error_count = 0;
                      ")
- 
- 
- 
+
+
+
  host_nopara_dmeas = Csnippet("
                  double delta = 0.013;
                  double tol = 1e-18;
@@ -358,22 +358,22 @@ load("data/raw_data.RData")
                    lik = dpois(dentadult,M,give_log);
                  }
                  ")
- 
+
  host_nopara_rmeas = Csnippet("
                  //double delta = 0.013;
                  dentadult = rpois(M);
                  ")
- 
+
  host_nopara_pt <- parameter_trans(
    log = c("alpha", "Beta", "Theta", "gamma", "sigB", "sigG", "kf")
  )
- 
+
  host_nopara_pomplist=list()
- 
+
  #Not sure about the consumption rate of alga
  host_nopara_parameters = c(0.5, 0.0005,0.03,0.1, 8,0.6,0.3)
  names(host_nopara_parameters) =  c("alpha","Beta", "gamma", "Theta","kf","sigB","sigG")
- 
+
  for (i in 1:10){
    colnames(host_nopara_data[[i]]) <- c('day', 'dentadult')
    pomp(data = host_nopara_data[[i]],
@@ -392,19 +392,19 @@ load("data/raw_data.RData")
    coef(host_nopara_pomplist[[i]])=host_nopara_parameters
  }
  names(host_nopara_pomplist)=paste("u", 1:10,sep = "")
- 
+
  host_nopara_shared_parameter =        c(7.773061e-05  ,2.052644e-01   ,1.790036    ,6.940058e-03  ,1.170719e-01, 0.15)
  names(host_nopara_shared_parameter) = c("Beta","gamma","kf","sigB","alpha", "Theta")
- 
+
  host_nopara_specific_mat = matrix(data = c(rep(0.3, 10)),
                                    nrow = 1, nc = 10, byrow = T,
                                    dim = list(rownames = c("sigG"),
                                               colnames=c("u1","u2","u3","u4","u5", "u6","u7","u8","u9","u10")))
- 
+
  host_nopara_panelfood = panelPomp(host_nopara_pomplist, shared=host_nopara_shared_parameter,specific = host_nopara_specific_mat)
- 
+
  #----------------------------------------------------------------------------------------------------------------------
- 
+
  #----------dent par Model----------------------------------------------
  dent_par_rpro <- Csnippet("
                       double S_term, I_term, F_term, P_term;
@@ -471,8 +471,8 @@ load("data/raw_data.RData")
 
 
                       ")
- 
- 
+
+
  # Initial state. Assume t0 = day 4
  dent_par_init = Csnippet("
                      S = 3; //3= 45/15L
@@ -486,8 +486,8 @@ load("data/raw_data.RData")
                      //add 25 P at day 4
                      P = 0;
                      ")
- 
- 
+
+
  dent_par_dmeas = Csnippet("
                  double tol = 1e-18;
 
@@ -504,25 +504,25 @@ load("data/raw_data.RData")
                       }
 
                  ")
- 
+
  dent_par_rmeas = Csnippet("
                  dentadult = rnbinom_mu(k_S,T_D);
                  dentinf = rnbinom_mu(k_I,T_I);
                  ")
- 
+
  dent_par_pt <- parameter_trans(
    log = c("alpha", "beta", "gamma", "sigS", "sigI", "sigF","sigP","K_F","f_S","theta_P","r", "f_I","k_S","k_I"),
    logit = c('prob',"zeta","theta_S","theta_I")
  )
- 
+
  dent_par_pomplist=list()
- 
- 
+
+
  dent_par_parameters =         c(0.16,   2.8   ,   0.00011,   0.1,    0.1,   0.7,  0.2,     0.01,     0.8,     2.3,  0.001,   0.2,      0.1,  0.06 ,  0.7,   0.003,10,10)
  names(dent_par_parameters) =  c("alpha", "beta",  "gamma", "sigS", "sigI", "sigF","sigP","theta_S","theta_I","K_F", "f_S",  "theta_P", "r", "zeta", "prob", "f_I","k_S","k_I")
- 
- 
- 
+
+
+
  for (i in 1:8){
    colnames(host_para_data[[i]]) <- c('day', 'dentadult', 'dentinf')
    pomp(data = host_para_data[[i]],
@@ -541,21 +541,21 @@ load("data/raw_data.RData")
    coef(dent_par_pomplist[[i]])=dent_par_parameters
  }
  names(dent_par_pomplist)=paste("u", 1:8,sep = "")
- 
+
  shared_dent_par_parameter =        c(0.0115,   0.39 , 9.628e-06,  0.5447 , 0.1004, 0.04401,    0.3,   0.5798,  0.1489,  0.0008096, 0.004265,    0.1432,  0.003244 ,  0.6551,   0.003584,   8,   8)
  names(shared_dent_par_parameter) = c("alpha", "sigS",  "gamma",  "sigI",  "sigF", "sigP", "theta_S","theta_I","K_F",      "f_S",  "theta_P",     "r",    "zeta",   "prob",     "f_I","k_S","k_I")
- 
+
  specific_dent_par_mat = matrix(data = c(rep(2.2,8)),
                                 nrow = 1, nc = 8, byrow = T,
                                 dim = list(rownames = "beta",
                                            colnames=c("u1","u2","u3","u4","u5", "u6","u7","u8")))
- 
- 
+
+
  dent_par_panelfood = panelPomp(dent_par_pomplist, shared=shared_dent_par_parameter,specific = specific_dent_par_mat)
- 
- 
+
+
  #----------------------------------------------------------------------------------------------------------------------
- 
+
  #----------lum par Model----------------------------------------------
  lum_par_rpro <- Csnippet("
                       double S_term, I_term, F_term, P_term;
@@ -621,7 +621,7 @@ load("data/raw_data.RData")
                      // Rprintf(\"P=%f\\n\",P);
 
                       ")
- 
+
  lum_par_init = Csnippet("
                      S = 3; //3= 45/15L
                      F = 16.667;
@@ -634,7 +634,7 @@ load("data/raw_data.RData")
                      //add 25 P at day 4
                      P = 0;
                      ")
- 
+
  lum_par_dmeas = Csnippet("
                  double tol = 1e-18;
 
@@ -651,25 +651,25 @@ load("data/raw_data.RData")
                       }
 
                  ")
- 
+
  lum_par_rmeas = Csnippet("
                  lumadult = rnbinom_mu(k_S,T_D);
                  luminf = rnbinom_mu(k_I,T_I);
                  ")
- 
+
  lum_par_pt <- parameter_trans(
    log = c("alpha", "beta", "gamma", "sigS", "sigI", "sigF","sigP","K_F","f_S","theta_P","r", "f_I","k_S","k_I"),
    logit = c('prob',"zeta","theta_S","theta_I")
  )
- 
+
  lum_par_pomplist=list()
- 
- 
+
+
  lum_par_parameters =         c(0.16,   2.8   ,   0.00011,   0.1,    0.1,   0.7,  0.2,     0.01,     0.8,     2.3,  0.001,   0.2,      0.1,  0.06 ,  0.7,   0.003,10,10)
  names(lum_par_parameters) =  c("alpha", "beta",  "gamma", "sigS", "sigI", "sigF","sigP","theta_S","theta_I","K_F", "f_S",  "theta_P", "r", "zeta", "prob", "f_I","k_S","k_I")
- 
- 
- 
+
+
+
  for (i in 1:9){
    colnames(invasive_para_data[[i]]) <- c('day', 'lumadult', 'luminf')
    pomp(data = invasive_para_data[[i]],
@@ -688,19 +688,19 @@ load("data/raw_data.RData")
    coef(lum_par_pomplist[[i]])=lum_par_parameters
  }
  names(lum_par_pomplist)=paste("u", 1:9,sep = "")
- 
- 
+
+
  lum_par_shared_parameter =        c(0.0115,   0.39 , 9.628e-06,  0.5447 , 0.1004, 0.04401,    0.3,   0.5798,  0.1489,  0.0008096, 0.004265,    0.1432,  0.003244 ,  0.6551,   0.003584,   8,   8)
  names(lum_par_shared_parameter) = c("alpha", "sigS",  "gamma",  "sigI",  "sigF", "sigP", "theta_S","theta_I","K_F",      "f_S",  "theta_P",     "r",    "zeta",   "prob",     "f_I","k_S","k_I")
- 
+
  lum_par_specific_mat = matrix(data = c(rep(2.2,9)),
                                nrow = 1, nc = 9, byrow = T,
                                dim = list(rownames = "beta",
                                           colnames=c("u1","u2","u3","u4","u5", "u6","u7","u8","u9")))
- 
- 
+
+
  lum_par_panelfood = panelPomp(lum_par_pomplist, shared=lum_par_shared_parameter,specific = lum_par_specific_mat)
- 
+
  #----------------------------------------------------------------------------------------------------------------------
  #----------mixed par Model-----------------------------------------------------------------------------------------------
  mix_par_rpro <- Csnippet("
@@ -788,7 +788,7 @@ load("data/raw_data.RData")
                       T_Ii += delta * Ii * dt;
 
                       ")
- 
+
  # Initial state. Assume t0 = day 4
  mix_par_init = Csnippet("
                      Sn = 2.333; //2.3333 = 35/15L
@@ -806,9 +806,9 @@ load("data/raw_data.RData")
                      //add 25 P at day 4
                      P = 0;
                      ")
- 
- 
- 
+
+
+
  mix_par_dmeas = Csnippet("
                  double tol = 1e-18;
 
@@ -828,7 +828,7 @@ load("data/raw_data.RData")
 
 
                  ")
- 
+
  mix_par_rmeas = Csnippet("
                  //double delta = 0.013;
                  dentadult = rnbinom_mu(k_Sn,T_Sn);
@@ -836,19 +836,19 @@ load("data/raw_data.RData")
                  lumadult = rnbinom_mu(k_Si,T_Si);
                  luminf = rnbinom_mu(k_Ii,T_Ii);
                  ")
- 
+
  mix_par_pt <- parameter_trans(
    #Without death part
    log = c("alpha", "betan", "betai", "gamman", "gammai", "sigSn", "sigIn", "sigSi", "sigIi", "sigF","sigP","K_F","f_Sn","f_Si", "f_In","f_Ii","rn","ri","k_Ii","k_In","k_Sn","k_Si"),
    logit = c("probn","probi","xi","theta_Sn","theta_In","theta_Si","theta_Ii","theta_P")
  )
- 
+
  mix_par_pomplist=list()
- 
+
  mix_par_parameters =         c(0.16,    0.3,   17,    3  ,    0.0001,  8.34e-06,     0.4,    0.5,    0.8,     0.2,     0.01,  0.2,    0.15,       0.07 ,   0.2,       0.01,    0.096     ,1  ,0.0006,0.001 , 0.0035 ,0.003 , 0.2  , 0.4, 0.6  ,0.8 ,8,8,8,8)
  names(mix_par_parameters) =  c("alpha","xi", "betan", "betai", "gamman", "gammai", "sigSn", "sigIn", "sigSi", "sigIi", "sigF","sigP","theta_Sn","theta_In","theta_Si","theta_P","theta_Ii","K_F","f_Sn","f_Si", "f_In","f_Ii","rn","ri","probn","probi","k_Ii","k_In","k_Sn","k_Si")
- 
- 
+
+
  for (i in 1:8){
    colnames(mixed_para_data[[i]]) <- c('day', 'dentadult', 'dentinf','lumadult','luminf')
    pomp(data = mixed_para_data[[i]],
@@ -867,11 +867,11 @@ load("data/raw_data.RData")
    coef(mix_par_pomplist[[i]])=mix_par_parameters
  }
  names(mix_par_pomplist)=paste("u", 1:8,sep = "")
- 
+
  mix_par_shared_parameter = c("alpha" = 0.045,"xi" = 0.0005,"gamman" = 9.4e-05,"gammai" =0.00075, "sigSn" = 0.15, "sigIn" = 0.033, "sigSi" =0.28, "sigIi" = 0.03,
                               "sigF" = 0.08, "theta_Sn" = 0.19,"theta_In" = 0.62,"theta_Si" = 0.22,"theta_P" = 0.08,"theta_Ii" = 0.48,"K_F" = 0.3,"f_Sn" = 0.001,"f_Si" = 0.0011,"f_In" = 0.0012,"f_Ii" = 0.00023,"rn" = 0.25,
                               "ri" = 0.29,"probn" = 0.93,"probi" = 0.96,"k_Ii" = 0.38,"k_In" = 0.83,"k_Sn" = 11,"k_Si"= 570,"sigP" = 0.02, "betan" = 2, "betai" = 2)
- 
+
  mix_par_panelfood = panelPomp(mix_par_pomplist, shared=mix_par_shared_parameter)
 @
 
@@ -883,7 +883,7 @@ In ecological research, panel data, often comprising multi-magnitude time series
 \end{abstract}
 
 \noindent%
-{\it Keywords:}  Panel Iterated Filtering; SIRPF model; PanelPOMP; Daphnia. 
+{\it Keywords:}  Panel Iterated Filtering; SIRPF model; PanelPOMP; Daphnia.
 \vfill
 
 \newpage
@@ -907,7 +907,7 @@ Our objective is to evaluate the explanatory capabilities of two traditional eco
 \section{Study System}
 \label{sec:studysystem}
 
-The dynamics of our study are derived from the Searle's comparison experiment, which focuses on two \textit{Daphnia} species: \textit{Daphnia} \textit{dentifera Forbes}, natively prevalent in North American stratified lakes \citep{searle2016salinization}, and \textit{Daphnia} \textit{lumholtzi Sars}, an invasive species originating from Africa, Asia, and Australia. D. lumholtzi, first observed in North America in the 1990s, has rapidly expanded across the United States, impacting native species and ecosystem dynamics \citep{havel1993daphnia}. These \textit{Daphnia} species, referred to as the native and invasive hosts, are bred in controlled laboratory environments using isofemale lines. For their experiments, six clones of each species were selected to eliminate selection bias \citep{Searle2016}.\\ 
+The dynamics of our study are derived from the Searle's comparison experiment, which focuses on two \textit{Daphnia} species: \textit{Daphnia} \textit{dentifera Forbes}, natively prevalent in North American stratified lakes \citep{searle2016salinization}, and \textit{Daphnia} \textit{lumholtzi Sars}, an invasive species originating from Africa, Asia, and Australia. D. lumholtzi, first observed in North America in the 1990s, has rapidly expanded across the United States, impacting native species and ecosystem dynamics \citep{havel1993daphnia}. These \textit{Daphnia} species, referred to as the native and invasive hosts, are bred in controlled laboratory environments using isofemale lines. For their experiments, six clones of each species were selected to eliminate selection bias \citep{Searle2016}.\\
 
 The dynamics also involves \textit{Metschnikowia bicuspidata}, a parasitic fungus predominantly infecting the native host. This parasite, ingested as spores by \textit{Daphnia}, aggressively affects the host's fecundity and longevity \citep{duffy2010temporal}. The parasite's presence is identifiable by the opaqueness it causes in normally transparent hosts, with spore release upon host death. Searle's study utilized a M. bicuspidata strain from Baker Lake, Michigan, with consistent infectivity and virulence characteristics in different samples \citep{Searle2016}. The final species in our study is \textit{Ankistrodesmus falcatus}, a green alga that serves as the primary food source for \textit{Daphnia}. \textit{Ankistrodesmus falcatus} is a globally distributed freshwater chlorophyte, is known for its role in aquatic communities and has been utilized in ecological research due to its nutritional properties \citep{arnold1971ingestion}. Its significance is particularly evident in controlled experimental settings where the growth conditions and feeding rates of \textit{Daphnia} species can be closely monitored and manipulated \citep{martinez1994effect}.\\
 
@@ -930,61 +930,60 @@ As juveniles rarely exhibit clear signs of infection, only adult \textit{Daphnia
 
 \begin{figure}[H]
 \centering
-<<echo=FALSE, fig.cap="Plot1", fig.align='center', fig=TRUE, width=16, height=10>>=  
-   mixed_nopara_data_combined <- do.call(rbind, lapply(1:length(mixed_nopara_data), function(i) {
-     cbind(mixed_nopara_data[[i]], group=paste("Trial", trails[i]))
-   }))
-    mixed_para_data_combined <- do.call(rbind, lapply(1:length(mixed_para_data), function(i) {
-     cbind(mixed_para_data[[i]], group=paste("Trial", trails[i]))
-   }))
- 
-p1<- ggplot(mixed_nopara_data_combined, aes(x=day)) + 
-   geom_line(aes(y=dent.adult, group=interaction(group, "dent.adult"))) + 
-   geom_line(aes(y=lum.adult, color="blue", group=interaction(group, "lum.adult"))) +
-   scale_x_continuous(limits = c(0, 52)) +
-   scale_y_continuous(limits = c(0, 175)) +
-   facet_grid(. ~ group, scales = "fixed", space = "free") +
-   theme(
-     strip.text = element_text(size=10),
-     axis.text.x=element_text(color="black"),
-     axis.ticks.x=element_line(color="black"),
-     axis.text.y=element_text(color="black"),
-     axis.ticks.y=element_line(color="black"),
-     axis.title.x=element_blank(),
-     axis.title.y=element_blank(),
-     legend.position="none",
-     panel.spacing = unit(0, "lines"), # Adjust spacing between panels
-     strip.background = element_blank(), # Optional: Remove facet label background
-     strip.placement = "outside"
-   ) +
-   labs(title="Daphnia density in Non-parasitized Dynamics") +
-   guides(colour=guide_legend(title="Species"))
+<<echo=FALSE, fig.cap="Plot1", fig.align='center', fig=TRUE, width=16, height=10>>=
+ mixed_nopara_data_combined <- do.call(rbind, lapply(1:length(mixed_nopara_data), function(i) {
+  cbind(mixed_nopara_data[[i]], Trial = paste("Trial", trails[i]))
+}))
 
-p2<- ggplot(mixed_para_data_combined, aes(x=day)) + 
-   geom_line(aes(y=dentadult, group=interaction(group, "dentadult"))) + 
-   geom_line(aes(y=lumadult, color="blue", group=interaction(group, "lumadult"))) +
-    geom_line(aes(y=luminf,color="green", group=interaction(group, "luminf"))) + 
-   geom_line(aes(y=dentinf, color="red", group=interaction(group, "dentinf"))) +
-   
-   scale_x_continuous(limits = c(0, 52)) +
-   scale_y_continuous(limits = c(0, 175)) +
-   facet_grid(. ~ group, scales = "fixed", space = "free") +
-   theme(
-     strip.text = element_text(size=10),
-     axis.text.x=element_text(color="black"),
-     axis.ticks.x=element_line(color="black"),
-     axis.text.y=element_text(color="black"),
-     axis.ticks.y=element_line(color="black"),
-     axis.title.x=element_blank(),
-     axis.title.y=element_blank(),
-     legend.position="none",
-     panel.spacing = unit(0, "lines"), # Adjust spacing between panels
-     strip.background = element_blank(), # Optional: Remove facet label background
-     strip.placement = "outside"
-   ) +
-   labs(title="Daphnia density in Parasitized Dynamics") +
-   guides(colour=guide_legend(title="Species"))
+# Combine parasitized data with trial information
+mixed_para_data_combined <- do.call(rbind, lapply(1:length(mixed_para_data), function(i) {
+  cbind(mixed_para_data[[i]], Trial = paste("Trial", trails[i]))
+}))
+
+# Assuming 'mixed_nopara_data_combined' is already your data frame as shown
+# Create a mapping from Trial letters to bucket numbers
+trial_to_bucket <- function(trial) {
+  # Extract the letter from the trial name
+  letter <- substr(trial, 7, 7)
+  # Convert the letter to a bucket number (A=1, B=2, ..., J=10)
+  bucket_number <- match(letter, LETTERS[1:26])
+  # Return the bucket number prefixed with "Bucket"
+  return(paste("Bucket", bucket_number))
+}
+
+# Apply the function to create a new 'Bucket' column
+mixed_nopara_data_combined$Bucket <- sapply(mixed_nopara_data_combined$Trial, trial_to_bucket)
+mixed_para_data_combined$Bucket <- sapply(mixed_para_data_combined$Trial, trial_to_bucket)
+p1 <- ggplot(mixed_nopara_data_combined, aes(x = day)) +
+  geom_line(aes(y = dent.adult, group = interaction(Bucket, "dent.adult"), color = "Dent Adult"), size = 1) +  # Map color to a factor for legend
+  geom_line(aes(y = lum.adult, group = interaction(Bucket, "lum.adult"), color = "Lum Adult"), size = 1) +  # Map color to a factor for legend
+  scale_x_continuous(limits = c(0, 52)) +
+  scale_y_continuous(limits = c(0, 175)) +
+  facet_grid(. ~ Bucket, scales = "fixed", space = "free") +
+  theme_minimal() +
+  labs(title = "Daphnia Density in Non-parasitized Dynamics",
+       color = "Species") +
+  scale_color_manual(values = c("Dent Adult" = "black", "Lum Adult" = "blue"),
+                     labels = c("Dent Adult" = "Dent adult", "Lum Adult" = "Lum adult")) +
+  theme(legend.position = "right")  # Adjust the legend position as needed
+
+p2 <- ggplot(mixed_para_data_combined, aes(x = day)) +
+  geom_line(aes(y = dentadult, color = "Dent Adult", group = interaction(Bucket, "dentadult"))) +  # Added color mapping for dentadult
+  geom_line(aes(y = lumadult, color = "Lum Adult", group = interaction(Bucket, "lumadult"))) +  # Ensure consistent color mapping
+  geom_line(aes(y = luminf, color = "Lum Inf", group = interaction(Bucket, "luminf"))) +  # Ensure consistent color mapping
+  geom_line(aes(y = dentinf, color = "Dent Inf", group = interaction(Bucket, "dentinf"))) +  # Ensure consistent color mapping
+  scale_x_continuous(limits = c(0, 52)) +
+  scale_y_continuous(limits = c(0, 175)) +
+  facet_grid(. ~ Bucket, scales = "fixed", space = "free") +
+  theme_minimal() +
+  labs(title = "Daphnia Density in Parasitized Dynamics", color = "Species") +
+  scale_color_manual(values = c("Dent Adult" = "black", "Lum Adult" = "blue", "Lum Inf" = "green", "Dent Inf" = "red"),
+                     labels = c("Dent Adult" = "Dent adult", "Lum Adult" = "Lum adult", "Lum Inf" = "Lum inf", "Dent Inf" = "Dent inf")) +
+  guides(color = guide_legend(title = "Species"))  # Ensure the legend is properly configured
+
+# Arrange plots vertically
 grid.arrange(p1, p2, ncol = 1)
+
 @
 \caption{Plot of density of hosts in dynamics including both native and invasive host species of \textit{Daphnia}. The trail A to J represents different buckets in different experiment. The black lines represent the \textit{D. dentifera} density, the red lines show the \textit{D. lumholtzi} density, the green lines are the infected \textit{D. dentifera} density, and the blue lines indicate the infected \textit{D. lumholtzi} density.}
 \end{figure}
@@ -1026,7 +1025,7 @@ As we know, the measurement process variables are mutually independent. In the m
           \mathcal{L}(\theta) &= f_{Y_{1:n}}(y_{1:N}; \theta) \\
          & = \prod_{n=1}^N f_{Y_{n} | Y_{1:n-1}}(y_n | y_{n-1}; \theta) \\
          & = \prod_{n=1}^N f_{Y_n | X_n}(y_n | x_n ; \theta)\\
-         & \approx \prod_{n=1}^N \frac{1}{M} \sum_{m = 1}^M f_{Y_n|X_n}(y_n | x_n^m) 
+         & \approx \prod_{n=1}^N \frac{1}{M} \sum_{m = 1}^M f_{Y_n|X_n}(y_n | x_n^m)
          \end{flalign}
 The particle filter, a form of Sequential Monte Carlo method, is instrumental in processing partially observed Markov processes within complex statistical models \citep{ionides2006inference}. This technique hinges on the generation of multiple, simulated "particles" that each represent a potential state of the latent process \citep{ionides2011iterated}. As new observational data becomes available, these particles are updated and assigned weights proportional to their likelihood of representing the true latent state, considering the observed data.\\
 
@@ -1045,7 +1044,7 @@ In mechanistic modeling of dynamic systems, the foundational step involves the f
 
 To analyze the dynamics of Parasitized and Non-parasitized systems, the Susceptible-Infected-Recovered-Food-Parasite (SIRPF) model, an adaptation of the SIR model \citep{weiss2013sir}, is utilized. This model integrates the aspects of food and parasites, unlike the classical SIR model, to more accurately reflect the interactions between native and invasive hosts in the context of resource availability and parasitic influence. The SIRPF model incorporates these factors as quantitative latent state variables, enabling a more comprehensive understanding of the system's dynamics. In the meantime, the ecological processes of \textit{Daphnia} can be viewed as a Markov process, where the population of Susceptible and Infected individuals is observable, while the amount of food and parasites represent unobservable latent states. Utilizing panel data on \textit{Daphnia}, the PanelPOMP framework becomes a valuable analytical tool \citep{Carles2020}. Despite the lack of direct measurement data for these latent states, PanelPOMP, which has proven efficiency in analyzing ecological panel data, facilitates a robust analysis of these dynamics, effectively handling the complexities inherent in ecological systems.\\
 
-The SIRPF model describes the dynamics of the Susceptible($S$), Infected($I$), Recovered, Food($F$), and Parasite($P$) populations as the following graph and model show: 
+The SIRPF model describes the dynamics of the Susceptible($S$), Infected($I$), Recovered, Food($F$), and Parasite($P$) populations as the following graph and model show:
 
 \usetikzlibrary{positioning}
 \usetikzlibrary {arrows.meta}
@@ -1088,7 +1087,7 @@ The SIRPF model describes the dynamics of the Susceptible($S$), Infected($I$), R
 \draw [->, bendy] (S) to  (I);
 \draw [->, bendy] (I) to  (S);
 \draw [->, bendy] (P) to (I);
-% \path [->] (S) edge (I) 
+% \path [->] (S) edge (I)
 %            (P) edge (I);
 \draw [->, bendy] (I) to (P);
 \end{tikzpicture}
@@ -1209,7 +1208,7 @@ In the SIRPF2 model, detailed in Table 1, parameters and variables are distinctl
 
 <<Results, include=FALSE,echo=FALSE,results=hide>>=
 load('all_shared.RData')
- 
+
 parms = mif.estimate
 # parms = as.data.frame(t(parms))
 
@@ -1343,7 +1342,7 @@ The adaptation of the SIRPF model to SF and SF2 as following allows for a more f
 &dF(t)=\alpha F(t)\left(1-\frac{F(t)}{K_F}\right)\cdot dt-\gamma_n F(t) S_n(t) \cdot dt - \gamma_i F(t) S_i(t) \cdot dt -\delta F(t) \cdot dt+ \mu \cdot dt +F(t) d \zeta_F.\\
 &\zeta_F \sim N \left( 0, \sigma_F^2dt\right) \\
 &\zeta_{S_n} \sim N \left( 0, \sigma_{S_n}^2dt  \right) \\
-&\zeta_{S_i} \sim N \left( 0, \sigma_{S_i}^2dt \right) 
+&\zeta_{S_i} \sim N \left( 0, \sigma_{S_i}^2dt \right)
 \end{align}
 
 As a adaption form of SIRPF model, the upper equations show SF2 model, with the meaning of each parameter is the same as the SIRPF model. The only difference is that the SF and SF2 model do not have the parasitic term. While if we only keep one species in SF2 model, the model will become SF model. Utilizing the proposed model facilitates a rigorous way into the influence of algal density on the population dynamics of \textit{Daphnia}, particularly under conditions of potential food scarcity. This analytical approach allows for the testing of a specific hypothesis: the critical role of algal density in determining the population trajectory of \textit{Daphnia}. Should the model demonstrate a substantial fit to the observed data, it would substantiate the hypothesis that algal density is a pivotal factor in the observed decline of the \textit{Daphnia} population, thereby suggesting food limitation as a primary driver \citep{xiaotong2018}. Conversely, a poor fit of the model to the data may indicate that factors other than algal density predominantly govern the population dynamics of \textit{Daphnia}. In such a scenario, it becomes imperative to explore alternative variables that could significantly influence the population density of \textit{Daphnia}.\\
@@ -1354,15 +1353,15 @@ In the ecological study of \textit{Daphnia} populations, we employ the negative 
 The model's effectiveness in capturing the \textit{Daphnia} population dynamics hinges on its ability to account for overdispersion, a critical factor often overlooked in simpler models like the Poisson distribution \citep{breto2011compound}. As such, the negative binomial model stands as a more accurate representation of the complex ecological processes governing \textit{Daphnia} populations, particularly under varying food conditions.
 
 \begin{align}
-F \sim \operatorname{NBinomial}(n=S / \delta, \tau = k_F), \delta=0.013 
+F \sim \operatorname{NBinomial}(n=S / \delta, \tau = k_F), \delta=0.013
 \end{align}
 
 \section{Results}
 \label{sec:res}
 <<Setup, include=FALSE,echo=FALSE,results=hide>>=
  load('SIRPF_model_estimate.RData')
- 
- 
+
+
  ratio_SF_i = SF_invasive_estimate[length(SF_invasive_estimate)]/SF_invasive_estimate[4]
  ratio_SF_n = SF_native_estimate[length(SF_native_estimate)]/SF_native_estimate[4]
  ratio_SF2_i = SF2_estimate[11]/SF2_estimate[8]
@@ -1375,9 +1374,9 @@ F \sim \operatorname{NBinomial}(n=S / \delta, \tau = k_F), \delta=0.013
  ratio_SIRPF2_ni = SIRPF2_estimate[20] *  SIRPF2_estimate[2]/SIRPF2_estimate[12]
  ratio_SIRPF2_is = SIRPF2_estimate[21]/SIRPF2_estimate[11]
  ratio_SIRPF2_ii = SIRPF2_estimate[21] *  SIRPF2_estimate[2]/SIRPF2_estimate[14]
- 
- 
- 
+
+
+
  save(SF_invasive_estimate=SF_invasive_estimate,SF_native_estimate=SF_native_estimate,SF2_estimate=SF2_estimate,SIRPF_invasive_estimate=SIRPF_invasive_estimate,SIRPF_native_estimate=SIRPF_native_estimate,SIRPF2_estimate=SIRPF2_estimate,file = "SIRPF_model_estimate.RData")
 @
 When constructing statistical models to analyze ecological data, the specification of parameters plays a crucial role in shaping the model's complexity and interpretability. In a scenario with 10 units of observation, the decision to assign a parameter as shared across units or unique to each one has significant implications for the model's dimensionality. For instance, designating a parameter as shared across all units incrementally increases the model dimension by one, whereas categorizing a parameter as unique to each unit multiplies the dimensionality by the number of units, which in this case results in an increase by 10 for single species Non-parasitized dynamics, 9 for mixed species Non-parasitized dynamics and Parasitized dynamics with the invasive species of \textit{Daphnia}, and 8 for the rest dynamics.\\
