@@ -885,7 +885,7 @@ In ecological research, panel data, often comprising multi-magnitude time series
 \end{abstract}
 
 \noindent%
-{\it Keywords:}  Panel Iterated Filtering; SIRPF model; PanelPOMP; Daphnia.
+{\it Keywords:  Panel Iterated Filtering; SIRPF model; PanelPOMP; Daphnia}
 \vfill
 
 \newpage
@@ -994,7 +994,7 @@ p2 <- ggplot(mixed_para_data_combined, aes(x = day, y = sqrt(dentadult))) +
 
 grid.arrange(p1, p2, ncol = 1)
 @
-% \includegraphics[width=1\textwidth]{"Density_plot.png"} 
+% \includegraphics[width=1\textwidth]{"Density_plot.png"}
 % \label{fig:plot1}
 \caption{Plot of density of hosts in dynamics including both native and invasive host species of \textit{Daphnia}. The Buckets 1 to 9 represents different buckets in different experiment. The black lines represent the \textit{D. dentifera} density, the red lines show the \textit{D. lumholtzi} density, the green lines are the infected \textit{D. dentifera} density, and the blue lines indicate the infected \textit{D. lumholtzi} density.}
 \end{figure}
