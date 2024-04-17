@@ -1,0 +1,15 @@
+\babel@toc {english}{}\relax 
+\contentsline {section}{\numberline {1}Model Diagram}{2}{section.1}%
+\contentsline {section}{\numberline {2}Markov chain and differential equation interpretations in the dynamics}{3}{section.2}%
+\contentsline {subsection}{\numberline {2.1}SF Model}{3}{subsection.2.1}%
+\contentsline {paragraph}{Alga}{3}{section*.3}%
+\contentsline {paragraph}{\textit {Daphnia}}{4}{section*.4}%
+\contentsline {subsection}{\numberline {2.2}SF2 Model}{5}{subsection.2.2}%
+\contentsline {subsection}{\numberline {2.3}SIRPF Model}{5}{subsection.2.3}%
+\contentsline {subsection}{\numberline {2.4}SIRPF2 Model}{6}{subsection.2.4}%
+\contentsline {section}{\numberline {3}Simulations}{7}{section.3}%
+\contentsline {subsection}{\numberline {3.1}SF Models}{8}{subsection.3.1}%
+\contentsline {subsection}{\numberline {3.2}SF2 Models}{9}{subsection.3.2}%
+\contentsline {subsection}{\numberline {3.3}SIRPF Models}{10}{subsection.3.3}%
+\contentsline {subsection}{\numberline {3.4}SIRPF2 Models}{12}{subsection.3.4}%
+\contentsline {section}{\numberline {4}Results and Tables}{14}{section.4}%
