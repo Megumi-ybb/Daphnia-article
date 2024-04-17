@@ -18,7 +18,7 @@
 \usepackage{textcomp}
 \usepackage{tikz}
 \usepackage{hyphenat}
-\usepackage{Sweave}
+
 \bibliographystyle{apalike}
 \newcommand{\blind}{1}
 \usetikzlibrary{positioning}
@@ -32,7 +32,7 @@
 \addtolength{\topmargin}{-1in}%
 
 \begin{document}
-\SweaveOpts{concordance=TRUE}
+% \SweaveOpts{concordance=TRUE}
 \def\spacingset#1{\renewcommand{\baselinestretch}%
 {#1}\small\normalsize} \spacingset{1}
 
@@ -59,7 +59,7 @@
   \medskip
 } \fi
 
-<<Setup, include=FALSE,echo=FALSE,results=hide>>=
+<<Setup, include=FALSE,echo=FALSE,results='hide'>>=
  library(plyr)
  library(reshape2)
 library(patchwork)
@@ -930,10 +930,18 @@ Parasitized dynamics is employed with a key difference, which is the presence of
 Population densities and infection prevalence(if exists) were quantified every five days, beginning a week after the experiment started. On each sampling day, mesocosms were thoroughly mixed, and a 1-liter sample was removed and replaced with fresh COMBO media. The samples were concentrated using a 153-$\mu m$ mesh and the \textit{Daphnia} were counted under a microscope. For each \textit{Daphnia}, species (native or invasive), infection status, age, and sex were determined. Regular stirring of mesocosms ensured resuspension of algae and parasites. Algal and nutrient levels were supplemented bi-weekly, with COMBO media added as necessary. The experiment concluded after 52 days, totaling 10 sampling sessions \citep{Searle2016}.\\
 
 As juveniles rarely exhibit clear signs of infection, only adult \textit{Daphnia} were used for quantifying effects in both non-parasitized and prarasitized dynamics to minimize information bias. Figures below illustrates these dynamics, with the first row of Figure 1 depicting non-parasitized dynamics (mixed-species) where changes in native and invasive host densities reflect direct resource competition, for example, food alga \textit{Ankistrodesmus falcatus}. The second row of Figure 1 shows parasitized dynamics, where the interplay of susceptible and infected \textit{Daphnia} of different species is further influenced by parasites, complicating the variation of susceptible and infected \textit{Daphnia} of different races, which makes it difficult to directly analyze the sources of influence on their variation. Non-parasitized dynamics will be analyzed at the first place to help understand the effect of resource competition in mixed-species. And based on this result, the correlation between native host and invasive host in parasitized dynamics will be further explored.
+% 
+\begin{figure}[H]
+% \centering
+<<echo=FALSE, fig.width=8, fig.height=6,out.width="2in">>=
+ plot(x = 1:10)
+@
+\end{figure}
+% 
 
 \begin{figure}[H]
 \centering
-<<echo=FALSE, fig.cap="Plot1", fig=TRUE, width=25, height=10,out.width='\\textwidth'>>=
+<<DataVis,echo=FALSE, fig.width=9,fig.height=6,out.width="2in">>=
 mixed_nopara_data_combined <- do.call(rbind, lapply(1:length(mixed_nopara_data), function(i) {
   cbind(mixed_nopara_data[[i]], Trial = paste("Trial", trails[i]))
 }))
@@ -954,7 +962,7 @@ p1 <- ggplot(mixed_nopara_data_combined, aes(x = day, y = sqrt(dent.adult))) +
   geom_line(aes(color = "Dent Adult"), size = 1) +
   geom_line(aes(y = sqrt(lum.adult), color = "Lum Adult"), size = 1) +
   facet_wrap(~Bucket, nrow = 1, labeller = bucket_labeller) +
-  theme(axis.title.x = element_blank(),
+  theme(axis.title.x = element_blank( ),
         axis.title.y = element_text(size = 10),  # Y-axis title
         axis.text.x = element_text(size = 10),   # X-axis text
         axis.text.y = element_text(size = 10),   # Y-axis text
@@ -962,7 +970,8 @@ p1 <- ggplot(mixed_nopara_data_combined, aes(x = day, y = sqrt(dent.adult))) +
         legend.text = element_text(size = 10),   # Legend text
         strip.text = element_text(size = 10),    # Facet label text
         strip.background = element_blank(),
-        strip.placement = "outside") +
+        strip.placement = "outside",
+        plot.margin = c(.5,.5,.5,.5)) +
   ylab('Square root of Daphnia density') +
   scale_x_continuous(limits = c(0, 52), breaks = c(0, 25, 50)) +
   labs(title = "Daphnia Density in Non-parasitized Dynamics", color = "Species") +
@@ -985,7 +994,8 @@ p2 <- ggplot(mixed_para_data_combined, aes(x = day, y = sqrt(dentadult))) +
         legend.text = element_text(size = 10),
         strip.text = element_text(size = 10),
         strip.background = element_blank(),
-        strip.placement = "outside") +
+        strip.placement = "outside",
+        plot.margin = c(.5,.5,.5,.5)) +
   ylab('Square root of Daphnia density') +
   scale_x_continuous(limits = c(0, 52), breaks = c(0, 25, 50)) +
   labs(title = "Daphnia Density in Parasitized Dynamics", color = "Species") +
@@ -994,9 +1004,10 @@ p2 <- ggplot(mixed_para_data_combined, aes(x = day, y = sqrt(dentadult))) +
   guides(color = guide_legend(title = "Species"))
 
 grid.arrange(p1, p2, ncol = 1)
+
 @
 % \includegraphics[width=1\textwidth]{"Density_plot.png"}
-% \label{fig:plot1}
+\label{fig:plot1}
 \caption{Plot of density of hosts in dynamics including both native and invasive host species of \textit{Daphnia}. The Buckets 1 to 9 represents different buckets in different experiment. The black lines represent the \textit{D. dentifera} density, the red lines show the \textit{D. lumholtzi} density, the green lines are the infected \textit{D. dentifera} density, and the blue lines indicate the infected \textit{D. lumholtzi} density.}
 \end{figure}
 
@@ -1166,7 +1177,7 @@ Each equation intricately ties the state variables to depict the complex dynamic
 
 In the SIRPF2 model, detailed in Table 1, parameters and variables are distinctly annotated for native hosts (subscript $n$), invasive hosts (subscript $i$), and parasite spores (subscript $p$). Intraspecific competition among hosts is conceptualized via the Lotka-Volterra framework, with $r_n$ and $r_i$ denoting respective reproductive rates. Host density growth, influenced by algal density, is posited to be linear, indicating a direct relationship between food availability and \textit{Daphnia} reproduction. Mortality rates of susceptible hosts are denoted as $\theta_{S_n}$ and $\theta_{S_i}$. The model encapsulates the dynamics of infection through \textit{Metschnikowia bicuspidata} intake, affecting susceptible hosts. This interaction consequently modulates reproductive rates, represented as $\xi r_n$. Infection rates correlate with spore density ($P$) and host ingestion rates ($f_{S_n}$, $f_{S_i}$). Upon death, infected hosts ($\theta_{I_n}$, $\theta_{I_i}$) release spores, which are subsequently subject to ingestion and environmental degradation. The consumption dynamics of food by susceptible and infected hosts are captured by $\gamma_n$ and $\gamma_i$, and food growth is inversely proportional to its carrying capacity ($K_F$), reflective of resource limitation. The model also incorporates a constant removal rate $\delta$, representing the loss of hosts, spores, and food due to external sampling. The constraint of food supply, indicated by a constant rate $\mu = 0.37 \times 10^5$ cells per day, is based on observed declines in \textit{Daphnia} populations in the panel data, suggesting a pivotal role of food availability in driving population dynamics.\\
 
-<<Results, include=FALSE,echo=FALSE,results=hide>>=
+<<Results, include=FALSE,echo=FALSE,results='hide'>>=
 load('all_shared.RData')
 mif.estimate = as.data.frame(t(mif.estimate))
 
@@ -1284,7 +1295,7 @@ F \sim \operatorname{NBinomial}(n=S / \delta, \tau = k_F), \delta=0.013
 
 \section{Results}
 \label{sec:res}
-<<Result2, include=FALSE,echo=FALSE,results=hide>>=
+<<Result2, include=FALSE,echo=FALSE,results='hide'>>=
  load('SIRPF_model_estimate.RData')
   
 

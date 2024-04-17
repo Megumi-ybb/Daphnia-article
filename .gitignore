@@ -3,3 +3,5 @@
 *.tex
 *.bbl
 *.log
+*.aux
+figure
