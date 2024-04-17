@@ -21,7 +21,9 @@
 \usepackage{Sweave}
 \bibliographystyle{apalike}
 \newcommand{\blind}{1}
-
+\usetikzlibrary{positioning}
+\usetikzlibrary {arrows.meta}
+\usetikzlibrary{shapes.geometric}
 % DON'T change margins - should be 1 inch all around.
 \addtolength{\oddsidemargin}{-.5in}%
 \addtolength{\evensidemargin}{-1in}%
@@ -892,8 +894,7 @@ In ecological research, panel data usually consists of multiple time series, whi
 \spacingset{1.9} % DON'T change the spacing!
 \section{Introduction}
 \label{sec:intro}
-
-Ecological experiments contain many elements or processes that are difficult to observe, so models that can describe both observable and unobservable processes are needed to explain the entire ecological experiment. As mathematical descriptions of the elements that make up a system, mechanistic models can describe the interactions between the elements of the system and their interactions with the environment. Using established processes, they can elucidate the role of hidden mechanisms \citep{Duarte2003}. The purpose of mechanistic modeling in ecology is to use mathematical models to describe the development and interactions of dynamic systems. This quantitative tool allows researchers to assess the explanatory potential of various conceptual models and to measure the magnitude of relevant parameters. Mechanistic modeling has been widely used in the social sciences, industrial engineering and physics. Now, increased computational power has made it even more effective. Because of the non-smooth, non-linear and stochastic nature of ecological information, traditional time-series analysis offers limited explanatory power. Despite creating theoretical models for the data, linking the theory to the data remains a challenging task. As a result, eco-mechanical modeling is unable to address most problems on a large scale, but only a limited range of problems \citep{levin1992problem}.\\
+Ecological experiments contain many elements or processes that are difficult to observe, models that can describe both observable and unobservable processes to explain the whole ecological experiment are necessary. As a mathematical description of the elements forming a system, mechanistic modeling can describe the mutual interactions between elements in the system and their interactions with the environment \citep{Stalidzans2020}. Utilizing the established process, they elucidate the actions of hidden mechanisms  The purpose of mechanistic modeling in ecology involves employing mathematical models to depict the development and interaction of dynamic systems. This quantitative tool allows researchers to evaluate the explanatory potential of various conceptual models and measure the magnitude of pertinent parameters. Mechanistic modeling has been widely employed in social sciences, industrial engineering, and physics for an extended period. Improved computational capabilities now make it more effective. Traditional time series analysis offers limited explanatory power due to the nonstationary, nonlinear, and stochastic nature of ecological information. Despite the creation of theoretical models for the data, connecting theories with data continues to be a challenging task. As a result, ecological mechanical modeling cannot solve most of the problems on a wide scale, but rather, only a limited range of the problems \\
 
 Panel data, sometimes referred to as longitudinal data, is composed of multiple time series. Each of these time series, which may be multivariate, contains a series of observations collected from a separate entity  \citep{Carles2020}. In ecology, panel data is a traditional data form that researchers gather to mitigate the impact of random variations throughout experiments, so that it can more accurately measure changes in experimental objectives and control the variables needed to achieve experimental goals. Due to the non-linear characteristics of ecological data, the analysis of panel data entails a high-dimensional structure. Such features diminish the explanatory power of traditional time series analysis and certain Monte Carlo inference techniques \citep{johnstone2009statistical}. The goal of this study is to investigate the practicality of employing mechanistic models on ecological panel data using the panelPOMP structure.\\
 
@@ -1055,59 +1056,6 @@ In mechanistic modeling of dynamic systems, the foundational step involves the f
 
 To analyze the dynamics of parasitized and non-parasitized systems, the Susceptible-Infected-Recovered-Food-Parasite (SIRPF) model, an adaptation of the SIR model \citep{weiss2013sir}, is utilized. This model integrates the aspects of food and parasites, unlike the classical SIR model, to more accurately reflect the interactions between native and invasive hosts in the context of resource availability and parasitic influence. The SIRPF model incorporates these factors as quantitative latent state variables, enabling a more comprehensive understanding of the system's dynamics. In the meantime, the ecological processes of \textit{Daphnia} can be viewed as a Markov process, where the population of Susceptible and Infected individuals is observable, while the amount of food and parasites represent unobservable latent states. Utilizing panel data on \textit{Daphnia}, the PanelPOMP framework becomes a valuable analytic tool \citep{Carles2020}. Despite the lack of direct measurement data for these latent states, PanelPOMP, which has proven efficiency in analyzing ecological panel data, facilitates a robust analysis of these dynamics, effectively handling the complexities inherent in ecological systems.\\
 
-The SIRPF model describes the dynamics of the Susceptible($S$), Infected($I$), Recovered, Food($F$), and Parasite($P$) populations as the Figure 2 and model show:
-
-\usetikzlibrary{positioning}
-\usetikzlibrary {arrows.meta}
-\usetikzlibrary{shapes.geometric}
-
-\begin{figure}
-\begin{center}
-%%%%% SEAIR diagram
-\resizebox{8cm}{!}{
-\begin{tikzpicture}[
-  square/.style={rectangle, draw=black, minimum width=0.5cm, minimum height=0.5cm, rounded corners=.1cm, fill=blue!8},
-  rhombus/.style={diamond, draw=black, minimum width=0.05cm, minimum height=0.05cm, fill=purple!8,aspect = 1,inner sep=0cm},
-  travel/.style={circle, draw=black, minimum width=0.5cm, minimum height=0.5cm, fill=green!8},
-  report/.style={shape=regular polygon, regular polygon sides=8, draw, fill=red!8,minimum size=0.6cm,inner sep=0cm},
-  bendy/.style={bend left=10},
-  >/.style={shorten >=0.25mm}, % redefine arrow to stop short of node
-  >/.tip={Stealth[length=1.5mm,width=1.5mm]} % redefine arrow style
-]
-\tikzset{>={}}; % this is needed to implement the arrow redefinition
-
-\node (S) at (-0.5,-0.25) [square] {$S$};
-\node (I) at (4.5,-0.25) [square] {$I$};
-\node (P) at (2.5,0.75)  [rhombus] {$P$};
-\node (R) at (3.5,2)[travel] {$R$};
-
-\node (F) at (4.5,4.5) [report] {$F$};
-
-
-\draw [->] (F) --  (R);
-\draw [->] (P) --  (R);
-\draw [->] (S) -- (R);
-\draw [->] (I) -- (R);
-
-\draw [->] (F) -- (S);
-\draw [->] (F) -- (I);
-
-\draw (S) edge[loop left] (S);
-\draw (F) edge[loop above] (F);
-
-\draw [->, bendy] (S) to  (I);
-\draw [->, bendy] (I) to  (S);
-\draw [->, bendy] (P) to (I);
-% \path [->] (S) edge (I)
-%            (P) edge (I);
-\draw [->, bendy] (I) to (P);
-\end{tikzpicture}
-}
-\end{center}
-\vspace{-5mm}
-\caption{A flow diagram for the SIRPF model. Apart from the quantified states above, the graph includes $R$ state, which represents deadth status. For \textit{Daphnia} either dentifera or lumholtzi, susceptible, infected \textit{Daphnia} and food retain the ability to produce offspring, which is represented in the graph as a self-recycling of $S$ and $F$, as well as transaction from $I$ to $S$. Some susceptible \textit{Daphnia} get infected by parasites, transitioning from $S$ to $I$. Both susceptible and infected \textit{Daphnia} contribute to the $R$ state upon death, releasing surviving parasites back into the environment. And the parasites continue to impact other individuals and get into another cycle. Food is consumed by both $S$ and $I$ individuals. Over time, elements in $F$ and $P$ also transit to the $R$ state.}
-\label{fig:flow_SIRPF}
-\end{figure}
 
 {
 \small
@@ -1310,45 +1258,6 @@ The integration of these stochastic terms within the SIRPF2 framework, as detail
 The approach of analyzing Non-parasitized Dynamics through adapted models of the SIRPF framework, such as the Susceptible - Food (SF) and SF2 models, is a strategic method to quantify the impact of environmental resources, like food($F$), on the interactions between native($S_n$) and invasive($S_i$) host species. The SF model focuses on the dynamics between susceptible individuals and food resources, while the SF2 model extends this concept to include Mixed Race Dynamics. This extension is particularly useful in understanding how different species, native and invasive, interact with each other and with their environment in the absence of parasitic factors.\\
 
 The adaptation of the SIRPF model to SF and SF2 as following allows for a more focused examination of the roles that resources play in ecological systems, especially when considering the competition or coexistence between different species. By isolating the food variable in the absence of parasites, these models can provide clearer insights into how food resource availability or scarcity impacts the population dynamics of native and invasive species.
-
-\begin{figure}[H]
-\begin{center}
-%%%%% SEAIR diagram
-\resizebox{8cm}{!}{
-\begin{tikzpicture}[
-  square/.style={rectangle, draw=black, minimum width=1cm, minimum height=1cm, rounded corners=.1cm, fill=blue!8},
-  report/.style={shape=regular polygon, regular polygon sides=8, draw, fill=red!8,minimum size=1cm,inner sep=0cm},
-  rhombus/.style={diamond, draw=black, minimum width=0.1cm, minimum height=0.1cm, fill=purple!8,aspect = 1},
-  bendy/.style={bend left=10},
-  >/.style={shorten >=0.25mm}, % redefine arrow to stop short of node
-  >/.tip={Stealth[length=1.5mm,width=1.5mm]} % redefine arrow style
-]
-\tikzset{>={}}; % this is needed to implement the arrow redefinition
-
-\node (Sn) at (-0.5,0) [square] {$S_n$};
-\node (F) at (2.5,0) [report] {$F$};
-\node (Si) at (5.5,0) [square] {$S_i$};
-\node (R) at (2.5,2) [square] {$R$};
-
-
-\draw [->] (F) --  (Sn);
-\draw [->] (F) --  (Si);
-\draw [->] (F) --  (R);
-\draw [->] (Sn) --  (R);
-\draw [->] (Si) --  (R);
-\draw (Sn) edge[loop above] (Sn);
-\draw (Si) edge[loop above] (Si);
-\draw (F) edge[loop below] (F);
-
-\draw [dotted, thick, red] (3.5, -0.75) rectangle (6.5, 1.5);
-\end{tikzpicture}
-}
-\end{center}
-\vspace{-5mm}
-\caption{A flow diagram for the SF and SF2 model. In this system, both types of \textit{Daphnia} and the food resource contribute to reproduction, depicted as self-recycling loops for $S_n$, $S_i$, and $F$. As time progresses, individuals in $F$, $S_n$, and $S_i$ transition to the $R$ state, signifying mortality. While the whole graph show SF2 model, if we remove the node in the dashed rectangle, the graph will represent the SF model.}
-\label{fig:SF&SF2}
-\end{figure}
-
 \begin{align}
 &d S_n(t)=r_n S_n(t) dt- \theta_{S_n}S_n(t) dt -\delta S_n(t)dt + S_n(t) d\zeta_{S_n} \\
 &d S_i(t)=r_i S_i(t) dt- \theta_{S_i} S_i(t) dt -\delta S_i(t)dt + S_i(t) d\zeta_{S_i} \\

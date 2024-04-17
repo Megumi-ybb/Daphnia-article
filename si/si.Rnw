@@ -882,7 +882,101 @@ load("data/raw_data.RData")
 \newpage
 
 \section{Model Diagram}
+\subsection{SIRPF Model}
 
+The SIRPF model describes the dynamics of the Susceptible($S$), Infected($I$), Recovered, Food($F$), and Parasite($P$) populations as the Figure 2 and model show:
+
+\usetikzlibrary{positioning}
+\usetikzlibrary {arrows.meta}
+\usetikzlibrary{shapes.geometric}
+
+\begin{figure}
+\begin{center}
+\resizebox{8cm}{!}{
+\begin{tikzpicture}[
+  square/.style={rectangle, draw=black, minimum width=0.5cm, minimum height=0.5cm, rounded corners=.1cm, fill=blue!8},
+  rhombus/.style={diamond, draw=black, minimum width=0.05cm, minimum height=0.05cm, fill=purple!8,aspect = 1,inner sep=0cm},
+  travel/.style={circle, draw=black, minimum width=0.5cm, minimum height=0.5cm, fill=green!8},
+  report/.style={shape=regular polygon, regular polygon sides=8, draw, fill=red!8,minimum size=0.6cm,inner sep=0cm},
+  bendy/.style={bend left=10},
+  >/.style={shorten >=0.25mm}, % redefine arrow to stop short of node
+  >/.tip={Stealth[length=1.5mm,width=1.5mm]} % redefine arrow style
+]
+\tikzset{>={}}; % this is needed to implement the arrow redefinition
+
+\node (S) at (-0.5,-0.25) [square] {$S$};
+\node (I) at (4.5,-0.25) [square] {$I$};
+\node (P) at (2.5,0.75)  [rhombus] {$P$};
+\node (R) at (3.5,2)[travel] {$R$};
+
+\node (F) at (4.5,4.5) [report] {$F$};
+
+
+\draw [->] (F) --  (R);
+\draw [->] (P) --  (R);
+\draw [->] (S) -- (R);
+\draw [->] (I) -- (R);
+
+\draw [->] (F) -- (S);
+\draw [->] (F) -- (I);
+
+\draw (S) edge[loop left] (S);
+\draw (F) edge[loop above] (F);
+
+\draw [->, bendy] (S) to  (I);
+\draw [->, bendy] (I) to  (S);
+\draw [->, bendy] (P) to (I);
+\draw [->, bendy] (I) to (P);
+\end{tikzpicture}
+}
+\end{center}
+\vspace{-5mm}
+\caption{A flow diagram for the SIRPF model. Apart from the quantified states above, the graph includes $R$ state, which represents deadth status. For \textit{Daphnia} either dentifera or lumholtzi, susceptible, infected \textit{Daphnia} and food retain the ability to produce offspring, which is represented in the graph as a self-recycling of $S$ and $F$, as well as transaction from $I$ to $S$. Some susceptible \textit{Daphnia} get infected by parasites, transitioning from $S$ to $I$. Both susceptible and infected \textit{Daphnia} contribute to the $R$ state upon death, releasing surviving parasites back into the environment. And the parasites continue to impact other individuals and get into another cycle. Food is consumed by both $S$ and $I$ individuals. Over time, elements in $F$ and $P$ also transit to the $R$ state.}
+\label{fig:flow_SIRPF}
+\end{figure}
+
+\subsection{SF2 Model}
+
+
+\begin{figure}[H]
+\begin{center}
+%%%%% SEAIR diagram
+\resizebox{8cm}{!}{
+\begin{tikzpicture}[
+  square/.style={rectangle, draw=black, minimum width=1cm, minimum height=1cm, rounded corners=.1cm, fill=blue!8},
+  report/.style={shape=regular polygon, regular polygon sides=8, draw, fill=red!8,minimum size=1cm,inner sep=0cm},
+  rhombus/.style={diamond, draw=black, minimum width=0.1cm, minimum height=0.1cm, fill=purple!8,aspect = 1},
+  bendy/.style={bend left=10},
+  >/.style={shorten >=0.25mm}, % redefine arrow to stop short of node
+  >/.tip={Stealth[length=1.5mm,width=1.5mm]} % redefine arrow style
+]
+\tikzset{>={}}; % this is needed to implement the arrow redefinition
+
+\node (Sn) at (-0.5,0) [square] {$S_n$};
+\node (F) at (2.5,0) [report] {$F$};
+\node (Si) at (5.5,0) [square] {$S_i$};
+\node (R) at (2.5,2) [square] {$R$};
+
+
+\draw [->] (F) --  (Sn);
+\draw [->] (F) --  (Si);
+\draw [->] (F) --  (R);
+\draw [->] (Sn) --  (R);
+\draw [->] (Si) --  (R);
+\draw (Sn) edge[loop above] (Sn);
+\draw (Si) edge[loop above] (Si);
+\draw (F) edge[loop below] (F);
+
+\draw [dotted, thick, red] (3.5, -0.75) rectangle (6.5, 1.5);
+\end{tikzpicture}
+}
+\end{center}
+\vspace{-5mm}
+\caption{A flow diagram for the SF and SF2 model. In this system, both types of \textit{Daphnia} and the food resource contribute to reproduction, depicted as self-recycling loops for $S_n$, $S_i$, and $F$. As time progresses, individuals in $F$, $S_n$, and $S_i$ transition to the $R$ state, signifying mortality. While the whole graph show SF2 model, if we remove the node in the dashed rectangle, the graph will represent the SF model.}
+\label{fig:SF&SF2}
+\end{figure}
+
+\subsection{SF Model}
 Dynamic models addressed in this manuscript are comprehensively delineated through the descriptions provided within the main text, augmented by the supplementary details furnished in this section. Notwithstanding their complete mathematical specification, visual diagrams of dynamic systems frequently facilitate comprehension of the underlying equations. Hence, this section presents a model diagram, which corresponds to the SF model. It is imperative to recognize that, given the models are articulated through their mathematical formulations and numerical implementations, these diagrams do not constitute unique visual depictions. There exist alternative visualizations that might further aid in elucidating the models discussed herein.
 
 \begin{figure}[H]
