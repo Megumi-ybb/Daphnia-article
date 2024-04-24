@@ -74,6 +74,8 @@ library(patchwork)
  library(gridExtra)
  library(scales)  # For formatting scales
  library(patchwork)
+ library(dplyr)
+ library(gtable)
 
  myround <- function (x, digits = 1) {
   if (length(digits) > 1) {
@@ -707,7 +709,7 @@ load("data/raw_data.RData")
 
  #----------------------------------------------------------------------------------------------------------------------
  #----------mixed par Model-----------------------------------------------------------------------------------------------
- mix_par_rpro <- Csnippet("
+mix_par_rpro <- Csnippet("
                       double Sn_term, In_term, F_term, P_term , Si_term, Ii_term;
                       double noiSn, noiIn, noiSi , noiIi ,noiF, noiP;
                       double delta = 0.013; //fraction of volume replaced day-1
@@ -752,72 +754,79 @@ load("data/raw_data.RData")
                       Si += Si_term;
                       Ii += Ii_term;
                       P += P_term;
-
+                      
                       //Trace time
-
+                      
                      if (t - 4.0 < 0.001 && t - 4.0 > -0.001){
                       //Initial statement
                         P += 25;
                       }
-
-
-                      if (Sn < 0.0) {
+                      
+                      
+                      if (Sn < 0.0 || Sn > 1e5) {
                         Sn = 0.0;
                         error_count += 1;
                       }
-                      if (Si < 0.0) {
+                      if (Si < 0.0 || Si > 1e5) {
                         Si = 0.0;
                         error_count += 1000000;
                       }
-                      if (F < 0) {
-                        F = 0;
+                      if (F < 0.0 || F > 1e20) {
+                        F = 0.0;
                         error_count += 1000;
                       }
-                      if (In < 0) {
-                        In = 0;
+                      if (In < 0.0 || In > 1e5) {
+                        In = 0.0;
                         error_count += 0.001;
                       }
-                      if (Ii < 0) {
-                        Ii = 0;
+                      if (Ii < 0.0 || Ii > 1e5) {
+                        Ii = 0.0;
                         error_count += 0.000000001;
-                      }
-                      if (P < 0 && t > 3.9) {
-                        P = 0;
+                      }                      
+                      if ((P < 0.0 || P > 1e20)&& t > 3.9) {
+                        P = 0.0;
                         error_count += 0.000001;
                       }
-
-                      T_Sn += delta * Sn * dt;
-                      T_In += delta * In * dt;
-                      T_Si += delta * Si * dt;
-                      T_Ii += delta * Ii * dt;
+                      
+                      T_Sn = delta * Sn * dt;
+                      T_In = delta * In * dt;
+                      T_Si = delta * Si * dt;
+                      T_Ii = delta * Ii * dt;
+                      
+                      T_Sn = fabs(T_Sn);
+                      T_In = fabs(T_In);
+                      T_Si = fabs(T_Si);
+                      T_Ii = fabs(T_Ii);
+                      
 
                       ")
 
- # Initial state. Assume t0 = day 4
- mix_par_init = Csnippet("
+# Initial state. Assume t0 = day 4
+mix_par_init = Csnippet("
                      Sn = 2.333; //2.3333 = 35/15L
                      Si = 0.667; //0.667 = 10/15L
                      F = 16.667;
-                     T_Sn = 0;
-                     T_Si = 0;
-                     T_In = 0;
-                     T_Ii = 0;
-                     In = 0;
-                     Ii = 0;
-
+                     
+                     T_Sn = 0.0;
+                     T_Si = 0.0;
+                     T_In = 0.0;
+                     T_Ii = 0.0;
+                     In = 0.0;
+                     Ii = 0.0;
+                     
                      error_count = 0.0;
-
+                     
                      //add 25 P at day 4
                      P = 0;
                      ")
 
 
 
- mix_par_dmeas = Csnippet("
+mix_par_dmeas = Csnippet("
                  double tol = 1e-18;
-
+                 
                  if (error_count > 0.0) {
-                   lik = -100;
+                   lik = -150;
                   }
                  else{
                     if(give_log){
@@ -827,13 +836,13 @@ load("data/raw_data.RData")
                     lik  = dnbinom_mu(lumadult,k_Si,T_Si,give_log) *  dnbinom_mu(luminf,k_Ii,T_Ii,give_log) * dnbinom_mu(dentadult,k_Sn,T_Sn,give_log) *  dnbinom_mu(dentinf,k_In,T_In,give_log);
                     }
                       }
-
-
-
-
+                 
+                 
+                 
+                 
                  ")
 
- mix_par_rmeas = Csnippet("
+mix_par_rmeas = Csnippet("
                  //double delta = 0.013;
                  dentadult = rnbinom_mu(k_Sn,T_Sn);
                  dentinf = rnbinom_mu(k_In,T_In);
@@ -841,11 +850,11 @@ load("data/raw_data.RData")
                  luminf = rnbinom_mu(k_Ii,T_Ii);
                  ")
 
- mix_par_pt <- parameter_trans(
-   #Without death part
-   log = c("alpha", "betan", "betai", "gamman", "gammai", "sigSn", "sigIn", "sigSi", "sigIi", "sigF","sigP","K_F","f_Sn","f_Si", "f_In","f_Ii","rn","ri","k_Ii","k_In","k_Sn","k_Si"),
-   logit = c("probn","probi","xi","theta_Sn","theta_In","theta_Si","theta_Ii","theta_P")
- )
+mix_par_pt <- parameter_trans(
+  #Without death part
+  log = c("alpha", "betan", "betai", "gamman", "gammai", "sigSn", "sigIn", "sigSi", "sigIi", "sigF","sigP","K_F","f_Sn","f_Si", "f_In","f_Ii","rn","ri","k_Ii","k_In","k_Sn","k_Si"),
+  logit = c("probn","probi","xi","theta_Sn","theta_In","theta_Si","theta_Ii","theta_P")
+)
 
  mix_par_pomplist=list()
 
@@ -894,34 +903,34 @@ In ecological research, panel data usually consists of multiple time series, whi
 \spacingset{1.9} % DON'T change the spacing!
 \section{Introduction}
 \label{sec:intro}
-Ecological experiments contain many elements or processes that are difficult to observe, models that can describe both observable and unobservable processes to explain the whole ecological experiment are necessary. As a mathematical description of the elements forming a system, mechanistic modeling can describe the mutual interactions between elements in the system and their interactions with the environment \citep{Stalidzans2020}. Utilizing the established process, they elucidate the actions of hidden mechanisms  The purpose of mechanistic modeling in ecology involves employing mathematical models to depict the development and interaction of dynamic systems. This quantitative tool allows researchers to evaluate the explanatory potential of various conceptual models and measure the magnitude of pertinent parameters. Mechanistic modeling has been widely employed in social sciences, industrial engineering, and physics for an extended period. Improved computational capabilities now make it more effective. Traditional time series analysis offers limited explanatory power due to the nonstationary, nonlinear, and stochastic nature of ecological information. Despite the creation of theoretical models for the data, connecting theories with data continues to be a challenging task. As a result, ecological mechanical modeling cannot solve most of the problems on a wide scale, but rather, only a limited range of the problems \\
+Ecological experiments contain many elements or processes that are difficult to observe, models that can describe both observable and unobservable processes to explain the whole ecological experiment are necessary. As a mathematical description of the elements forming a system, mechanistic modeling can describe the interactions between elements in the dynamic system and their interactions with the environment \citep{Stalidzans2020}. Utilizing the established process by mechanistic models, we can understand the hidden mechanisms in dynamic systems better. This quantitative tool allows researchers to evaluate the explanatory potential of various conceptual models and measure the magnitude of pertinent parameters. Mechanistic modeling has been widely employed in social sciences, industrial engineering, and physics for an extended period. Improved computational capabilities now make it more effective. The purpose of mechanistic modeling in ecology involves employing mathematical models to depict the development and interaction of dynamic systems. Traditional time series analysis offers limited explanatory power due to the nonstationary, nonlinear, and stochastic nature of ecological information. Despite the creation of theoretical models for the data, connecting theories with data continues to be a challenging task. As a result, ecological mechanical modeling cannot solve most of the problems on a wide scale, but rather, only a limited range of the problems. \\
 
-Panel data, sometimes referred to as longitudinal data, is composed of multiple time series. Each of these time series, which may be multivariate, contains a series of observations collected from a separate entity  \citep{Carles2020}. In ecology, panel data is a traditional data form that researchers gather to mitigate the impact of random variations throughout experiments, so that it can more accurately measure changes in experimental objectives and control the variables needed to achieve experimental goals. Due to the non-linear characteristics of ecological data, the analysis of panel data entails a high-dimensional structure. Such features diminish the explanatory power of traditional time series analysis and certain Monte Carlo inference techniques \citep{johnstone2009statistical}. The goal of this study is to investigate the practicality of employing mechanistic models on ecological panel data using the panelPOMP structure.\\
+Panel data, sometimes referred to as longitudinal data, is composed of multiple time series. Each of these time series, which may be multivariate, contains a series of observations collected from a separate entity \citep{Carles2020}. In ecology, panel data is a traditional data form that researchers gather to mitigate the impact of random variations throughout experiments, so that it can more accurately measure changes in experimental objectives and control the variables needed to achieve experimental goals. The PanelPOMP approach modifies the partially observable Markov Process model to accommodate panel data by constructing a POMP model for each individual component \citep{King2016}. This method enables the determination of whether the parameters within the selected mathematical model are shared or distinct throughout the panel, by computing the highest log likelihood for all potential combinations through the use of panel iterated filtering. Stemming from iterated filtering \citep{ionides2011iterated} applied to a singular nonlinear stochastic time series, panel iterated filtering not only filters within each series but also cycles across the panel to achieve the best likelihood. This enables the application of mechanistic models to panel data while preserving its intricate dimensionality.\\
 
-The PanelPOMP approach modifies the partially observable Markov Process model to accommodate panel data by constructing a POMP model for each individual component \citep{King2016}. This method enables the determination of whether the parameters within the selected mathematical model are shared or distinct throughout the panel, by computing the highest log likelihood for all potential combinations through the use of panel iterated filtering. Stemming from iterated filtering \citep{King2016} applied to a singular nonlinear stochastic time series, panel iterated filtering not only filters within each series but also cycles across the panel to achieve the best likelihood. This enables the application of mechanistic models to panel data while preserving its intricate dimensionality.\\
+Due to the non-linear characteristics of ecological data, the analysis of panel data entails a high-dimensional structure. Such features diminish the explanatory power of traditional time series analysis and certain Monte Carlo inference techniques \citep{johnstone2009statistical}. The goal of this study is to investigate the practicality of employing mechanistic models on ecological panel data using the panelPOMP structure.\\
 
 In this research, we will show the advancement of the panelPOMP model by analyzing the \textit{Daphnia} panel data generated in the experiment of Searle et al. \citep{Searle2016}. The research group of Searle et al. collected panel data on the population densities of different species of \textit{Daphnia} under different conditions, and interpret how invasive \textit{Daphnia} species (\textit{lumholtzi}) affect the response of native \textit{Daphnia} species (\textit{dentifera}) to parasites with panel data \citep{Searle2016}. In their lab experiment, they generated standard ecological panel data featuring various independent trials under the same experimental conditions, with each consisting of a brief, nonlinear, and nonstationary time series. Conventional mechanistic theories cannot directly interpret these observations. Utilizing the panelPOMP approach allows for the combination of theoretical models and empirical data, enabling the extraction of the comprehensive information found in each individual time series \citep{Carles2020}.\\
 
-For a more in-depth examination of the concealed processes in the panel data, this research incorporates the Susceptible-Infected-Recovered-Food-Parasite (SIRPF) model - within the panelPOMP framework. After applying the model to the \textit{Daphnia} panel data, the maximum log-likelihood and best parameter estimates are determined via an iterative filtering approach. These findings are subsequently compared to discover a more accurate and appropriate model for the given data. The superior performance of the SIRPF model implies that the population density of alga \textit{Ankistrodesmus falcatus}, which is \textit{Daphnia}'s prey, impact the dynamics of both species of \textit{Daphnia}. It is worth noting that the population density of alga is neither observable nor recorded in the experiment. That implies the mechanistic models under panelPOMP potentially better explain the latent process and show the importance of unobservable processes \citep{Edwards2012}. At the same time, the panelPOMP framework provides an estimation of the parameters in the model, which helps to understand the hidden mechanisms in the ecological system \citep{Carles2020}. Based on the estimation, a detailed interpretation of relationship between invasive host and native host with presence of parasite is explaned.\\
+For a more in-depth examination of the concealed processes in the panel data, this research incorporates the Susceptible-Infected-Recovered-Food-Parasite (SIRPF) model - within the panelPOMP framework. After applying the model to the \textit{Daphnia} panel data, the best parameter estimates are determined through maximum log-likelihood estimation via the iterative filtering approach. These findings are subsequently compared to discover a more accurate and appropriate model for the given data. The good performance of the SIRPF model implies that the population density of alga \textit{Ankistrodesmus falcatus}, which is \textit{Daphnia}'s prey, plays an important role in the dynamics of both species of \textit{Daphnia}. It is worth noting that the population density of alga is neither observable nor recorded in the experiment. That implies the mechanistic models under panelPOMP potentially better explain the latent process and show the importance of unobservable processes \citep{Edwards2012}. Nevertheless, the panelPOMP framework provides an estimation of the parameters for each dynamic systems included, which helps to understand the hidden mechanisms in the ecological system \citep{Carles2020}. Based on the estimation, a detailed interpretation of relationship between each component in the ecological system is explained.\\
 
-Our objective is to evaluate the explanatory capabilities of two traditional ecological models when applied to the \textit{Daphnia} panel data, and to estimate the parameter sets for a more accurate depiction of the hidden mechanisms within the ecological system. By analyzing \textit{Daphnia} panel data, we hope to show the limitations and interpretations of mechanistic models in dealing with ecological data. Additionally, the later section will further discuss how the panelPOMP framework and PIF contribute to overcoming the inherent challenges associated with fitting ecological models.
+Our objective is to evaluate the explanatory capabilities of SIRPF model when applied to the \textit{Daphnia} panel data, and to estimate the parameter sets for a more accurate interpretation of the hidden mechanisms within the ecological system comparing to classical model. By analyzing \textit{Daphnia} panel data, we also show the interpretations and limitations of mechanistic models when dealing with ecological data. Additionally, how the panelPOMP framework and PIF contribute to overcoming the inherent challenges associated with fitting ecological models will be discussed in detail.
 
 
 \section{Study System}
 \label{sec:studysystem}
 
-The dynamics of our study are derived from the Searle's comparison experiment, which focuses on two \textit{Daphnia} species: \textit{Daphnia} \textit{dentifera Forbes}, natively prevalent in North American stratified lakes \citep{searle2016salinization}, and \textit{Daphnia} \textit{lumholtzi Sars}, an invasive species originating from Africa, Asia, and Australia. D. lumholtzi, first observed in North America in the 1990s, has rapidly expanded across the United States, impacting native species and ecosystem dynamics \citep{havel1993daphnia}. These \textit{Daphnia} species, referred to as the native and invasive hosts, are bred in controlled laboratory environments using isofemale lines. For their experiments, six clones of each species were selected to eliminate selection bias \citep{Searle2016}.\\
+The dynamics of our study are derived from the Searle's comparison experiment, which focuses on two \textit{Daphnia} species: \textit{Daphnia} \textit{dentifera Forbes}, natively prevalent in North American stratified lakes \citep{searle2016salinization}, and \textit{Daphnia} \textit{lumholtzi Sars}, an invasive species originating from Africa, Asia, and Australia. \textit{D. lumholtzi}, first observed in North America in the 1990s, has rapidly expanded across the United States, impacting native species and ecosystem dynamics \citep{havel1993daphnia}. These \textit{Daphnia} species, referred to as the native and invasive hosts, are bred in controlled laboratory environments using isofemale lines. For their experiments, six clones of each species were selected to eliminate selection bias \citep{Searle2016}.\\
 
-The dynamics also involves \textit{Metschnikowia bicuspidata}, a parasitic fungus predominantly infecting the native host. This parasite, ingested as spores by \textit{Daphnia}, aggressively affects the host's fecundity and longevity \citep{duffy2010temporal}. The parasite's presence is identifiable by the opaqueness it causes in normally transparent hosts, with spore release upon host death. Searle's study utilized a M. bicuspidata strain from Baker Lake, Michigan, with consistent infectivity and virulence characteristics in different samples \citep{Searle2016}. The final species in our study is \textit{Ankistrodesmus falcatus}, a green alga that serves as the primary food source for \textit{Daphnia}. \textit{Ankistrodesmus falcatus} is a globally distributed freshwater chlorophyte, is known for its role in aquatic communities and has been utilized in ecological research due to its nutritional properties \citep{arnold1971ingestion}. Its significance is particularly evident in controlled experimental settings where the growth conditions and feeding rates of \textit{Daphnia} species can be closely monitored and manipulated \citep{martinez1994effect}.\\
+The dynamics also involves \textit{Metschnikowia bicuspidata}, a parasitic fungus predominantly infecting the native host. This species of parasite is strain from Baker Lake, Michigan, with consistent infectivity and virulence characteristics in different samples \citep{Searle2016}. Searle's study utilized the \textit{M. bicuspidata}, which is ingested as spores by \textit{Daphnia}, aggressively affects the host's fecundity and longevity \citep{duffy2010temporal}. The parasite's presence is identifiable by the opaqueness it causes in normally transparent hosts, with spore release upon host death.  \textit{Ankistrodesmus falcatus}, a green alga that serves as the primary food source for \textit{Daphnia} also presents in the experiment. \textit{Ankistrodesmus falcatus} is a globally distributed freshwater chlorophyte, is known for its role in aquatic communities and has been utilized in ecological research due to its nutritional properties \citep{arnold1971ingestion}. Its significance is particularly evident in controlled experimental settings where the growth conditions and feeding rates of \textit{Daphnia} species can be closely monitored and manipulated \citep{martinez1994effect}.\\
 
-Drawing upon the empirical findings from Searle's laboratory, it was observed that while the two \textit{Daphnia} host species exhibited comparable resource acquisition rates, the invasive species demonstrated a more rapid reproductive cycle \citep{Searle2016}. This observation suggests a potential competitive advantage for the invasive species. Building on these insights, Searle and colleagues structured the ecological system we analyze here, focusing on dynamics at the community level. Their approach involved a mesocosm experiment that varied species composition and parasite presence. The experimental design was a 3x2x1 factorial arrangement, incorporating three species combinations (native only, invasive only, or both existing species), two parasite exposure scenarios (exposed or unexposed), and a single algal food source. This design enabled an in-depth analysis of the invasive host's impact on native populations, manifesting either directly through competition for resources, indirectly via the amplification of a mutual parasite, or through a reduction in parasite effects.\\
+Drawing upon the empirical findings from Searle's laboratory, it was observed that while the two \textit{Daphnia} host species exhibited comparable resource acquisition rates, the invasive species is a strong interspecific competitor \citep{Searle2016}. This observation suggests a potential competitive advantage for the invasive species. Building on these insights, Searle and colleagues structured the ecological system we analyze here, focusing on dynamics at the community level. Their approach involved a mesocosm experiment that varied species composition and parasite presence. The experimental design was a 3 $\times$ 2 $\times$ 1 factorial arrangement, incorporating three species combinations (native only, invasive only, or both existing species), two parasite exposure scenarios (exposed or unexposed), and a single algal food source. This design enabled an in-depth analysis of the invasive host's impact on native populations, manifesting either directly through competition for resources, indirectly via the amplification of a mutual parasite, or through a reduction in parasite effects.\\
 
-In essence, the impact of an invasive \textit{D. lumholtzi}, particularly in terms of resource competition like food, can be significant. This scenario would lead to a decreased survival rate of the native host in the presence of the invasive species, irrespective of parasite interference. This effect is quantifiable through the ratio of natality to mortality in the native host population. Conversely, should the invasive species primarily influence the native host indirectly via interactions with parasites, a different pattern emerges. Here, the survivability of the native host is expected to be lower in scenarios involving both the parasite and the invasive host, as opposed to situations where the native host is only affected by the parasite. This effect is quantifiable through the ratio of natality to mortality in the native host population as well.\\
+In essence, the impact of an invasive \textit{D. lumholtzi}, particularly in terms of resource competition like food, can be significant. This scenario would lead to a decreased survival rate of the native host in the presence of the invasive species, irrespective of parasite interference. This effect is quantifiable through the ratio of natality to mortality in the native host population. Apart from food, disease affect species' survivability. The invasive host dilutes disease when it is a strong interspecific competitor, while a weak interspecific invasive species amplifies disease. This effect is quantifiable through the ratio of natality to mortality in the native host population as well.\\
 
 \subsection{Non-parasitized Dynamics}
 This research stratifies the ecological dynamics above into two analytical categories delineated by parasitic presence. Under the 'Non-parasitized Dynamics' classification, three experimental groups of \textit{Daphnia} species—solely native, solely invasive, or a combined population—are statistically analyzed. This categorization facilitates a quantitative assessment of the interaction dynamics between native and invasive \textit{Daphnia} species, particularly in environments not influenced by parasitic interactions.\\
 
-In the Non-parasitized level, indoor mesocosms were used \citep{Searle2016}, each comprising a 18.9 L bucket with 15 L of high-hardness COMBO media. The experimental design involved 10 replicates for single-species treatments, and 9 replicates for mixed-species treatment. A nitrogen-to-phosphorus ratio of 25:1 was established, and each mesocosm was seeded with 2.5 $\times$ $10^8$ cells of \textit{Ankistrodesmus falcatus}. The laboratory conditions included an average temperature of 23.27$^\circ C$ ($\pm$0.2) and a 16-hour light, 8-hour dark cycle. For single-species treatments, either 45 native or invasive \textit{Daphnia} hosts were added, representing six genotypes per species to eliminate the selection bias. In mixed-species treatments, 35 native and 10 invasive hosts were introduced, simulating early invasion stages.\\
+At the non-parasitized level, indoor mesocosms were used \citep{Searle2016}, each comprising a 18.9 L bucket with 15 L of high-hardness COMBO media. The experimental design involved 10 replicates for single-species treatments, and 9 replicates for mixed-species treatment. A nitrogen-to-phosphorus ratio of 25:1 was established, and each mesocosm was seeded with 2.5 $\times$ $10^8$ cells of \textit{Ankistrodesmus falcatus}. The laboratory conditions included an average temperature of 23.27$^\circ C$ ($\pm$0.2) and a 16-hour light, 8-hour dark cycle. For single-species treatments, either 45 native or invasive \textit{Daphnia} hosts were added, representing six genotypes per species to eliminate the selection bias. In mixed-species treatments, 35 native and 10 invasive hosts were introduced, simulating early invasion stages.\\
 
 \subsection{Parasitized Dynamics}
 Parasitized dynamics is employed with a key difference, which is the presence of the parasite \textit{Metschnikowia bicuspidata} . Based on the same setup of Non-parasitized Dynamics, after a 4-day acclimation period in the mesocosms, hosts are exposed to parasites, with spore counts set at 25 per mL in parasite-exposed treatments. This category allows for the investigation of the impact of parasites on the interaction dynamics between native and invasive \textit{Daphnia} species, particularly how parasitism influences competition and survival rates. This approach complements the "Non-parasitized Dynamics" by providing a contrasting scenario where parasitic factors are at play, thereby enriching the understanding of ecological interactions under the presence of parasite.\\
@@ -929,19 +938,11 @@ Parasitized dynamics is employed with a key difference, which is the presence of
 \subsection{Data Collection and Visualization}
 Population densities and infection prevalence(if exists) were quantified every five days, beginning a week after the experiment started. On each sampling day, mesocosms were thoroughly mixed, and a 1-liter sample was removed and replaced with fresh COMBO media. The samples were concentrated using a 153-$\mu m$ mesh and the \textit{Daphnia} were counted under a microscope. For each \textit{Daphnia}, species (native or invasive), infection status, age, and sex were determined. Regular stirring of mesocosms ensured resuspension of algae and parasites. Algal and nutrient levels were supplemented bi-weekly, with COMBO media added as necessary. The experiment concluded after 52 days, totaling 10 sampling sessions \citep{Searle2016}.\\
 
-As juveniles rarely exhibit clear signs of infection, only adult \textit{Daphnia} were used for quantifying effects in both non-parasitized and prarasitized dynamics to minimize information bias. Figures below illustrates these dynamics, with the first row of Figure 1 depicting non-parasitized dynamics (mixed-species) where changes in native and invasive host densities reflect direct resource competition, for example, food alga \textit{Ankistrodesmus falcatus}. The second row of Figure 1 shows parasitized dynamics, where the interplay of susceptible and infected \textit{Daphnia} of different species is further influenced by parasites, complicating the variation of susceptible and infected \textit{Daphnia} of different races, which makes it difficult to directly analyze the sources of influence on their variation. Non-parasitized dynamics will be analyzed at the first place to help understand the effect of resource competition in mixed-species. And based on this result, the correlation between native host and invasive host in parasitized dynamics will be further explored.
-% 
-\begin{figure}[H]
-% \centering
-<<echo=FALSE, fig.width=8, fig.height=6,out.width="2in">>=
- plot(x = 1:10)
-@
-\end{figure}
-% 
+As juveniles rarely exhibit clear signs of infection, only adult \textit{Daphnia} were used for quantifying effects in both non-parasitized and prarasitized dynamics to minimize information bias. Figure 1 illustrates these dynamics, with the first row of Figure 1 depicting non-parasitized dynamics (mixed-species) where changes in native and invasive host densities reflect direct resource competition, for example, food alga \textit{Ankistrodesmus falcatus}. The second row of Figure 1 shows parasitized dynamics, where the interplay of susceptible and infected \textit{Daphnia} of different species is further influenced by parasites, complicating the variation of susceptible and infected \textit{Daphnia} of different races, which makes it difficult to directly analyze the sources of influence on their variation. Non-parasitized dynamics will be analyzed at the first place to help understand the effect of resource competition in mixed-species. And based on this result, the correlation between native host and invasive host in parasitized dynamics will be further explored.
 
 \begin{figure}[H]
 \centering
-<<DataVis,echo=FALSE, fig.width=9,fig.height=6,out.width="2in">>=
+<<DataVis,echo=FALSE, fig.width=9,fig.height=6,out.width="7in">>=
 mixed_nopara_data_combined <- do.call(rbind, lapply(1:length(mixed_nopara_data), function(i) {
   cbind(mixed_nopara_data[[i]], Trial = paste("Trial", trails[i]))
 }))
@@ -959,8 +960,8 @@ library(ggplot2)
 
 # Adjusting p1 with specified font size modifications
 p1 <- ggplot(mixed_nopara_data_combined, aes(x = day, y = sqrt(dent.adult))) +
-  geom_line(aes(color = "Dent Adult"), size = 1) +
-  geom_line(aes(y = sqrt(lum.adult), color = "Lum Adult"), size = 1) +
+  geom_line(aes(color = "Dent Susceptible"), linewidth = 1) +
+  geom_line(aes(y = sqrt(lum.adult), color = "Lum Susceptible"), linewidth = 1) +
   facet_wrap(~Bucket, nrow = 1, labeller = bucket_labeller) +
   theme(axis.title.x = element_blank( ),
         axis.title.y = element_text(size = 10),  # Y-axis title
@@ -972,19 +973,19 @@ p1 <- ggplot(mixed_nopara_data_combined, aes(x = day, y = sqrt(dent.adult))) +
         strip.background = element_blank(),
         strip.placement = "outside",
         plot.margin = c(.5,.5,.5,.5)) +
-  ylab('Square root of Daphnia density') +
+  ylab('Square root of Daphnia density per liter') +
   scale_x_continuous(limits = c(0, 52), breaks = c(0, 25, 50)) +
   labs(title = "Daphnia Density in Non-parasitized Dynamics", color = "Species") +
-  scale_color_manual(values = c("Dent Adult" = "black", "Lum Adult" = "blue")) +
+  scale_color_manual(values = c("Dent Susceptible" = "black", "Lum Susceptible" = "blue")) +
   theme_minimal() +
   guides(color = guide_legend(title = "Species"))
 
 # Adjusting p2 with specified font size modifications
 p2 <- ggplot(mixed_para_data_combined, aes(x = day, y = sqrt(dentadult))) +
-  geom_line(aes(color = "Dent Adult"), size = 1) +
-  geom_line(aes(y = sqrt(lumadult), color = "Lum Adult"), size = 1) +
-  geom_line(aes(y = sqrt(luminf), color = "Lum Inf"), size = 1) +
-  geom_line(aes(y = sqrt(dentinf), color = "Dent Inf"), size = 1) +
+  geom_line(aes(color = "Dent Susceptible"), linewidth = 1) +
+  geom_line(aes(y = sqrt(lumadult), color = "Lum Susceptible"), linewidth = 1) +
+  geom_line(aes(y = sqrt(luminf), color = "Lum Inf"), linewidth = 1) +
+  geom_line(aes(y = sqrt(dentinf), color = "Dent Inf"), linewidth = 1) +
   facet_wrap(~Bucket, nrow = 1, labeller = bucket_labeller) +
   theme(axis.title.x = element_text(size = 10),
         axis.title.y = element_text(size = 10),
@@ -996,10 +997,10 @@ p2 <- ggplot(mixed_para_data_combined, aes(x = day, y = sqrt(dentadult))) +
         strip.background = element_blank(),
         strip.placement = "outside",
         plot.margin = c(.5,.5,.5,.5)) +
-  ylab('Square root of Daphnia density') +
+  ylab('Square root of Daphnia density per liter') +
   scale_x_continuous(limits = c(0, 52), breaks = c(0, 25, 50)) +
   labs(title = "Daphnia Density in Parasitized Dynamics", color = "Species") +
-  scale_color_manual(values = c("Dent Adult" = "black", "Lum Adult" = "blue", "Lum Inf" = "green", "Dent Inf" = "red")) +
+  scale_color_manual(values = c("Dent Susceptible" = "black", "Lum Susceptible" = "blue", "Lum Inf" = "green", "Dent Inf" = "red")) +
   theme_minimal() +
   guides(color = guide_legend(title = "Species"))
 
@@ -1007,7 +1008,7 @@ grid.arrange(p1, p2, ncol = 1)
 
 @
 % \includegraphics[width=1\textwidth]{"Density_plot.png"}
-\label{fig:plot1}
+\label{fig:data_vis}
 \caption{Plot of density of hosts in dynamics including both native and invasive host species of \textit{Daphnia}. The Buckets 1 to 9 represents different buckets in different experiment. The black lines represent the \textit{D. dentifera} density, the red lines show the \textit{D. lumholtzi} density, the green lines are the infected \textit{D. dentifera} density, and the blue lines indicate the infected \textit{D. lumholtzi} density.}
 \end{figure}
 
@@ -1018,7 +1019,7 @@ Frequently, we lack a comprehensive understanding of the underlying mechanisms t
 
 The application of POMP models spans various fields, including epidemiology, ecology  \citep{king2022markov}, and finance \citep{welton2005estimation} where they are used to infer the dynamics of complex systems from partial observations. For instance, in epidemiological studies, POMP models are instrumental in estimating disease transmission rates and predicting future outbreaks by modeling the spread of infectious diseases when only a fraction of cases are observed \citep{xue2020data}. Similarly, in ecology, these models help in understanding animal population dynamics and migration patterns based on limited or sporadic sighting data \citep{wood2001partially}.\\
 
-Methodologically, POMP models are analyzed using a suite of computational techniques. Sequential Monte Carlo methods, such as particle filters, are commonly employed for state estimation and parameter inference in these models \citep{bhadra2011malaria}. These methods involve simulating a large number of potential realizations of the latent process and updating these simulations as new observations become available, thereby approximating the posterior distribution of the state given the data \citep{King2016}. Additionally, techniques like iterated filtering and particle Markov chain Monte Carlo are used for parameter estimation and model calibration.\\
+Methodologically, POMP models are analyzed using combination of various computational techniques. Sequential Monte Carlo methods, such as particle filters, are commonly employed for state estimation and parameter inference in these models \citep{bhadra2011malaria}. These methods involve simulating a large number of potential realizations of the latent process and updating these simulations as new observations become available, thereby approximating the posterior distribution of the state given the data \citep{King2016}. Additionally, techniques like iterated filtering and particle Markov chain Monte Carlo are used for parameter estimation and model calibration.\\
 
 With the random variables $Y_{0:N}$ which are the observable states process, the measurement model is $f_{Y_n|X_n}(y_n|x_n)$, and the collected data $y_{0:N}$ are observations of this process. We suppose random variables $X_{0:N}$ represent the latent states, where $X_0$ represents the initial state of the latent process, $f_{X|X_{n-1}}(x_n|x_{n-1})$. We assume that each $Y_n$ depends only upon the latent process at time $n$, $X_n$, and is conditionally independent of the other variables representing the measurement and latent processes, $Y_{n-1}$ and $X_{n-1}$, where $1 \leq n$. Together, $X_{0:N}$ and $Y_{0:N}$ form our POMP model. POMP models are vital in situations where we encounter incomplete or noisy measurements of a latent, unobserved Markov process. These models, also known as hidden Markov models or state space models, are particularly adept at handling time series data where observations are only partial or indirect representations of the underlying state of the system. Their strength lies in the combination of a latent process, which evolves according to Markov dynamics, and an observation process, which relates the latent states to the actual data observed.\\
 
@@ -1039,9 +1040,9 @@ The goal is to get the estimation of $\theta$, $\hat{\theta}$ that maximizes the
 
 An ecological model's effectiveness in tracking disease spread hinges on its capability to predict cases or incidence rates. This capability is inherently tied to our trust in the model's precision in forecasting and our grasp of the temporal changes in latent states. As a result, we encounter two interrelated issues: ascertaining the distribution of $X_{n}$ at time $n$ based on $y_{1:n}$, and pinpointing parameter values, $\hat{\theta}$, that maximize the data likelihood. These processes are commonly respectively concluded as the filtering process and the inference process.\\
 
-Working with POMP models can prove difficult due to the complexity of formulating both the likelihood function and transition density in intricate settings. To address this issue, several techniques have been devised, including the particle filter. Utilizing the particle filter method, it is only necessary to supply data, initial density simulators, single time-step transition density simulators for the latent process, and an evaluator for the observation process density reliant on the hidden process in order to achieve maximum likelihood estimates.\\
+Working with POMP models can prove difficulty due to the complexity of formulating both the likelihood function and transition density in intricate settings. To address this issue, several techniques have been devised, including the particle filter. Utilizing the particle filter method, it is only necessary to supply data, initial density simulators, single time-step transition density simulators for the latent process, and an evaluator for the observation process density reliant on the hidden process in order to achieve maximum likelihood estimates.\\
 
-To implement the particle filter, we start by initializing $M$ particles at time 1, where $\{ X_1^m; m \in 1:M \}$. All with the required latent state detail and a vector of parameter values, $\theta$. As a result, for every time step n, where $n \in $ [$N$], we advance the each particle by doing the one-step random walk based on transition density, resulting in a set of particles that represents the prediction distribution at time n, which can be represented as $f_{X_n|X_{n-1}}(\cdot | X_{n-1}^m; \theta)$. Next, we assign weights to the particles based on the measurement density to obtain an ensemble that represents the filtering distribution at time n, where the new weight is calculated via $w_{n,m} = f_{Y_n|X_n}(y_n | x_n^m)$. Finally, we reassign the particles based on their weights to generate a new set of particles that represents the filtering distribution, which can then be used to estimate model parameters swarm based on the maximum likelihood \citep{5}. The particle filter is particularly useful in situations where both the likelihood function and transition density are difficult to calculate analytically.\\
+To implement the particle filter, we start by initializing $M$ particles at time 1, where $\{ X_1^m; m \in (1,2,\cdots,M) \}$. All with the required latent state detail and a vector of parameter values, $\theta$. As a result, for every time step n, where $n \in $ [$1:N$], we advance the each particle by doing the one-step random walk based on transition density, resulting in a set of particles that represents the prediction distribution at time n, which can be represented as $f_{X_n|X_{n-1}}(\cdot | X_{n-1}^m; \theta)$. Next, we assign weights to the particles based on the measurement density to obtain an ensemble that represents the filtering distribution at time n, where the new weight is calculated via $w_{n,m} = f_{Y_n|X_n}(y_n | x_n^m)$. Finally, we reassign the particles based on their weights to generate a new set of particles that represents the filtering distribution, which can then be used to estimate model parameters swarm based on the maximum likelihood \citep{Carles2020}. The particle filter is particularly useful in situations where both the likelihood function and transition density are difficult to calculate analytically.\\
 
 As we know, the measurement process variables are mutually independent. In the mean time, the latent process states are dependent to one other. We also notice that the weight we assign to the particles will vary among different particles, which makes the calculation hard. As M to be large enough, we may approximate the weight of each particle to be the mean value of the to calculate the log-likelihood. Based on such fact, we can summarize as following:
          \begin{flalign}
@@ -1065,14 +1066,12 @@ Mechanistic models are highly effective in understanding ecological dynamics due
 
 In mechanistic modeling of dynamic systems, the foundational step involves the formulation of differential or difference equations that encapsulate the temporal evolution of the system. This approach is pivotal in time series analysis using mechanistic models, which primarily aims to assess the model's adequacy in capturing the dynamics of the system and, upon validation, estimate unknown parameters that govern these dynamics \citep{breto2009time}. The complexity in such models often arises from intrinsic stochasticity, nonlinearity, and the presence of noisy and incomplete observational data, features that are particularly prevalent in biological sciences \citep{wilkinson2018stochastic}.\\
 
-To analyze the dynamics of parasitized and non-parasitized systems, the Susceptible-Infected-Recovered-Food-Parasite (SIRPF) model, an adaptation of the SIR model \citep{weiss2013sir}, is utilized. This model integrates the aspects of food and parasites, unlike the classical SIR model, to more accurately reflect the interactions between native and invasive hosts in the context of resource availability and parasitic influence. The SIRPF model incorporates these factors as quantitative latent state variables, enabling a more comprehensive understanding of the system's dynamics. In the meantime, the ecological processes of \textit{Daphnia} can be viewed as a Markov process, where the population of Susceptible and Infected individuals is observable, while the amount of food and parasites represent unobservable latent states. Utilizing panel data on \textit{Daphnia}, the PanelPOMP framework becomes a valuable analytic tool \citep{Carles2020}. Despite the lack of direct measurement data for these latent states, PanelPOMP, which has proven efficiency in analyzing ecological panel data, facilitates a robust analysis of these dynamics, effectively handling the complexities inherent in ecological systems.\\
-
-
+To analyze the dynamics of parasitized and non-parasitized systems, the Susceptible-Infected-Recovered-Food-Parasite (SIRPF) model, an adaptation of the SIR model \citep{weiss2013sir}, is utilized. This model integrates the aspects of food and parasites, unlike the classical SIR model, to more accurately reflect the interactions between native and invasive hosts in the context of resource availability and parasitic influence. The SIRPF model incorporates these factors as quantitative latent state variables, enabling a more comprehensive understanding of the system's dynamics. In the meantime, the ecological processes of \textit{Daphnia} can be viewed as a Markov process, where the population of susceptible and infected individuals is observable, while the amount of food and parasites represent unobservable latent states. Utilizing panel data on \textit{Daphnia}, the PanelPOMP framework becomes a valuable analytic tool \citep{Carles2020}. Despite the lack of direct measurement data for these latent states, PanelPOMP, which has proven efficiency in analyzing ecological panel data, facilitates a robust analysis of these dynamics, effectively handling the complexities inherent in ecological systems.
 {
 \small
 \begin{align}
 &d S(t) = r F(t)\left(S(t)+\xi I(t)\right)dt - \theta_{S}S(t) dt - p f_{S} S(t) Pdt - \delta S(t)dt + S(t) d\zeta_{S}\\
-&d I(t) = p f_{S} S(t) Pdt - \theta_{I} I(t)dt - \delta I(t)dt + I(t) d\zeta_{I}\\
+&d I(t) = p f_{S} S(t) P(t)dt - \theta_{I} I(t)dt - \delta I(t)dt + I(t) d\zeta_{I}\\
 &dF(t) = \alpha F(t)\left(1-\frac{F(t)}{K_F}\right)dt - \gamma F(t) \left(S(t)+\xi I(t)\right) dt - \delta F(t) dt + \mu dt + F(t) d\zeta_F\\
 &d P(t) = \beta \theta_I I(t)dt - f_{S} S(t) P(t)dt - f_{I} I(t) P(t)dt - \theta_{\mathrm{p}} P(t)dt - \delta P(t) dt + P(t) d\zeta_{P}\\
 &d\zeta_{S} \sim N\left(0, \sigma_{S}^{2}dt\right),\\
@@ -1082,7 +1081,7 @@ To analyze the dynamics of parasitized and non-parasitized systems, the Suscepti
 \end{align}
 }
 
-Each equation intricately ties the state variables to depict the complex dynamics of the single species parasitized system. Building on the SIRPF model, the SIRPF2 model further adapts to a mixed-race parasitized system by introducing another \textit{Daphnia} species. This advanced model incorporates both invasive($S_i , I_i$) and native($S_n , I_n$)hosts, along with food($F$) and parasites($P$), and delineates their specific interactions within the ecosystem as the following graph and model shows. In the SIRPF2 model, the subscript n is used to denote parameters and variables related to the native host, i for those pertaining to the invasive host, and p for the parasite spores. The SIRPF2 model thus offers a more detailed representation of the ecological dynamics by accounting for the complex interplay between different species and environmental factors in a mechanistic framework.
+Each equation intricately ties the state variables to depict the complex dynamics of the single species parasitized system. Building on the SIRPF model, the SIRPF2 model further adapts to a mixed-race parasitized system by introducing another \textit{Daphnia} species. This advanced model incorporates both invasive($S_i , I_i$) and native($S_n , I_n$) hosts, along with food($F$) and parasites($P$), and delineates their specific interactions within the ecosystem as the following graph and model shows. In the SIRPF2 model, the subscript $n$ is used to denote parameters and variables related to the native host, $i$ for those pertaining to the invasive host, and $p$ for the parasite spores. The SIRPF2 model thus offers a more detailed representation of the ecological dynamics by accounting for the complex interplay between different species and environmental factors in a mechanistic framework.
 \begin{figure}
 \begin{center}
 %%%%% SEAIR diagram
@@ -1138,7 +1137,7 @@ Each equation intricately ties the state variables to depict the complex dynamic
 }
 \end{center}
 \vspace{-5mm}
-\caption{A flow diagram for the SIRPF2 model. Apart from the quantified states above, the graph includes $R$ state, which represents death status. The flow diagram shows the how two species of \textit{Daphnia} interact with each other indirectly through $F$ and $P$. The marginal processes have been shown in SIRPF mode, and SIRPF2 model is the adaption form in mixed-species dynamics}
+\caption{A flow diagram for the SIRPF2 model. The graph includes $R$ state, which represents death status. The flow diagram shows the how two species of \textit{Daphnia} interact with each other indirectly through $F$ and $P$. The marginal processes have been shown in SIRPF mode, and SIRPF2 model is the adaption form in mixed-species dynamics}
 \label{fig:flow_SIRPF2}
 \end{figure}
 
@@ -1175,7 +1174,7 @@ Each equation intricately ties the state variables to depict the complex dynamic
 \end{align}
 }
 
-In the SIRPF2 model, detailed in Table 1, parameters and variables are distinctly annotated for native hosts (subscript $n$), invasive hosts (subscript $i$), and parasite spores (subscript $p$). Intraspecific competition among hosts is conceptualized via the Lotka-Volterra framework, with $r_n$ and $r_i$ denoting respective reproductive rates. Host density growth, influenced by algal density, is posited to be linear, indicating a direct relationship between food availability and \textit{Daphnia} reproduction. Mortality rates of susceptible hosts are denoted as $\theta_{S_n}$ and $\theta_{S_i}$. The model encapsulates the dynamics of infection through \textit{Metschnikowia bicuspidata} intake, affecting susceptible hosts. This interaction consequently modulates reproductive rates, represented as $\xi r_n$. Infection rates correlate with spore density ($P$) and host ingestion rates ($f_{S_n}$, $f_{S_i}$). Upon death, infected hosts ($\theta_{I_n}$, $\theta_{I_i}$) release spores, which are subsequently subject to ingestion and environmental degradation. The consumption dynamics of food by susceptible and infected hosts are captured by $\gamma_n$ and $\gamma_i$, and food growth is inversely proportional to its carrying capacity ($K_F$), reflective of resource limitation. The model also incorporates a constant removal rate $\delta$, representing the loss of hosts, spores, and food due to external sampling. The constraint of food supply, indicated by a constant rate $\mu = 0.37 \times 10^5$ cells per day, is based on observed declines in \textit{Daphnia} populations in the panel data, suggesting a pivotal role of food availability in driving population dynamics.\\
+In the SIRPF2 model, detailed in Table 1, parameters and variables are distinctly annotated for native, invasive hosts, food and parasite spores. Intraspecific competition among hosts is conceptualized via limitation of food and environment resources, with $r_n$ and $r_i$ denoting respective reproductive rates. Host density growth, influenced by algal density, is posited to be linear, indicating a direct relationship between food availability and \textit{Daphnia} reproduction. Mortality rates of susceptible hosts are denoted as $\theta_{S_n}$ and $\theta_{S_i}$. The model represents the dynamics of infection through \textit{Metschnikowia bicuspidata} intake, affecting susceptible hosts. This interaction consequently modulates reproductive rates, represented as $\xi r_n$. Infection rates correlate with spore density ($P$) and host ingestion rates ($f_{S_n}$, $f_{S_i}$). Upon death, infected hosts ($\theta_{I_n}$, $\theta_{I_i}$) release spores, which are subsequently subject to ingestion and environmental degradation. After death of host, the parasite spores are released with rate of $\beta_i$ and $\beta_n$. The consumption dynamics of food by susceptible and infected hosts are captured by $\gamma_n$ and $\gamma_i$, and food growth is inversely proportional to its carrying capacity ($K_F$), reflective of resource limitation. The model also incorporates a constant removal rate $\delta$, representing the loss of hosts, spores, and food due to external sampling. The constraint of food supply, indicated by a constant rate $\mu = 0.37 \times 10^5$ cells per day, is based on observed declines in \textit{Daphnia} populations in the panel data, suggesting a pivotal role of food availability in driving population dynamics.\\
 
 <<Results, include=FALSE,echo=FALSE,results='hide'>>=
 load('all_shared.RData')
@@ -1262,7 +1261,7 @@ $k_{I_i}$ & Overdispersion parameter&$\mathrm{Unitless}$ & \Sexpr{mysignif(parms
 \renewcommand{\arraystretch}{1}
 In the realm of ecological modeling, particularly in the context of the SIRPF2 model, the stochastic nature of ecological processes is adeptly captured using the principles of Brownian motion. This concept, fundamental to the theory of random particle movement in fluids, is extended in our model to encapsulate the inherent randomness in ecological dynamics. In the SIRPF2 model, Brownian motion is manifested through stochastic terms ($\zeta_F$, $\zeta_{S_n}$, $\zeta_{S_i}$, $\zeta_{I_n}$, $\zeta_{I_i}$, $\zeta_{F}$, $\zeta_P$), which follow a normal distribution with zero mean and specific standard deviations. These stochastic elements are crucial for modeling the unpredictable variances in the population dynamics and environmental interactions, especially in the face of unforeseen environmental perturbations or random demographic events.\\
 
-The integration of these stochastic terms within the SIRPF2 framework, as detailed in Table 1, enhances the model's fidelity in simulating ecological interactions. The model, grounded in the Lotka-Volterra competition framework and augmented with stochastic components, provides a nuanced understanding of the interplay between native and invasive hosts, and their interaction with the surrounding resources and parasites. This incorporation of stochasticity, particularly through the lens of Brownian motion, is pivotal in transcending the limitations of deterministic models, thereby offering a more robust and comprehensive tool for ecological analysis.\\
+The integration of these stochastic terms within the SIRPF2 framework, as detailed in Table 1, enhances the model's fidelity in simulating ecological interactions. The model, grounded in the Lotka-Volterra competition framework and augmented with stochastic components, provides a detailed understanding of the interplay between native and invasive hosts, and their interaction with the surrounding resources and parasites. This incorporation of Brownian motion, is pivotal in transcending the limitations of deterministic models, thereby offering a more robust and comprehensive tool for ecological analysis.\\
 
 \subsection{SIRPF adaption: SF and SF2 model}
 
@@ -1285,9 +1284,9 @@ The adaptation of the SIRPF model to SF and SF2 as following allows for a more f
 As a adaption form of SIRPF model, the upper equations show SF2 model, with the meaning of each parameter is the same as the SIRPF model. The only difference is that the SF and SF2 model do not have the parasitic term. While if we only keep one species in SF2 model, the model will become SF model. Utilizing the proposed model facilitates a rigorous way into the influence of algal density on the population dynamics of \textit{Daphnia}, particularly under conditions of potential food scarcity. This analytical approach allows for the testing of a specific hypothesis: the critical role of algal density in determining the population trajectory of \textit{Daphnia}. Should the model demonstrate a substantial fit to the observed data, it would substantiate the hypothesis that algal density is a pivotal factor in the observed decline of the \textit{Daphnia} population, thereby suggesting food limitation as a primary driver \citep{xiaotong2018}. Conversely, a poor fit of the model to the data may indicate that factors other than algal density predominantly govern the population dynamics of \textit{Daphnia}. In such a scenario, it becomes imperative to explore alternative variables that could significantly influence the population density of \textit{Daphnia}.\\
 
 \subsection{Measurement and Initial condition}
-In the ecological study of \textit{Daphnia} populations, we employ the negative binomial distribution to address the inherent overdispersion observed in population counts. This distribution effectively models count data where the variance surpasses the mean, typical in ecological data due to the correlated nature of biological events \citep{ning2021systemic}. In our model, the parameter $F$ represents the number of successful \textit{Daphnia} reproductions before observing a fixed number of food scarcity events, and $S / \delta$ reflects average number of \textit{Daphnia} per liter per sampling time in each trial. This framework aligns with the observed dynamics in \textit{Daphnia} populations, where variability in reproduction rates, influenced by fluctuating food availability, leads to overdispersed population counts. The negative binomial distribution, therefore, provides a robust statistical tool to assess population dynamics, accommodating the irregularities in reproduction and survival patterns shaped by environmental constraints.\\
+In the ecological study of \textit{Daphnia} populations, we employ the negative binomial distribution to address the inherent overdispersion observed in population counts. This distribution effectively models count data where the variance surpasses the mean, typical in ecological data due to the correlated nature of biological events \citep{ning2021systemic}. In our model, the parameter $F$ represents the number of successful \textit{Daphnia} reproductions before observing a fixed number of food, and $S / \delta$ reflects average number of \textit{Daphnia} per liter per sampling time in each trial. This framework aligns with the observed dynamics in \textit{Daphnia} populations, where variability in reproduction rates, influenced by fluctuating food availability, leads to overdispersed population counts. The negative binomial distribution, therefore, provides a robust statistical tool to assess population dynamics, accommodating the irregularities in reproduction and survival patterns shaped by environmental constraints.\\
 
-The model's effectiveness in capturing the \textit{Daphnia} population dynamics hinges on its ability to account for overdispersion, a critical factor often overlooked in simpler models like the Poisson distribution \citep{breto2011compound}. As such, the negative binomial model stands as a more accurate representation of the complex ecological processes governing \textit{Daphnia} populations, particularly under varying food conditions.
+The model's effectiveness in capturing the \textit{Daphnia} population dynamics depends on its ability to account for overdispersion, a critical factor often overlooked in simpler models like the Poisson distribution \citep{breto2011compound}. As such, the negative binomial model stands as a more accurate representation of the complex ecological processes governing \textit{Daphnia} populations, particularly under varying food conditions.
 
 \begin{align}
 F \sim \operatorname{NBinomial}(n=S / \delta, \tau = k_F), \delta=0.013
@@ -1313,26 +1312,164 @@ F \sim \operatorname{NBinomial}(n=S / \delta, \tau = k_F), \delta=0.013
  ratio_SIRPF2_ii = SIRPF2_estimate[21] *  SIRPF2_estimate[2]/SIRPF2_estimate[14]
 
 @
-When constructing statistical models to analyze ecological data, the specification of parameters plays a crucial role in shaping the model's complexity and interpretability. In a scenario with 10 units of observation, the decision to assign a parameter as shared across units or unique to each one has significant implications for the model's dimensionality. For instance, designating a parameter as shared across all units incrementally increases the model dimension by one, whereas categorizing a parameter as unique to each unit multiplies the dimensionality by the number of units, which in this case results in an increase by 10 for single species Non-parasitized dynamics, 9 for mixed species Non-parasitized dynamics and Parasitized dynamics with the invasive species of \textit{Daphnia}, and 8 for the rest dynamics.\\
+When constructing statistical models to analyze ecological data, the specification of parameters plays a crucial role in shaping the model's complexity and interpretability. In a scenario with 10 units of observation, the decision to assign a parameter as shared across units or unique to each one has strong implications for the model's dimension. For instance, designating a parameter as shared across all units incrementally increases the model dimension by one, whereas categorizing a parameter as unique to each unit multiplies the dimension by the number of units, which in this case results in an increase by 10 for single species non-parasitized dynamics, 9 for mixed species non-parasitized dynamics and parasitized dynamics with the invasive species of \textit{Daphnia}, and 8 for the rest dynamics.\\
 
-Permitting parameters to be either shared or unique leads to varying dimensions for each model. With respective amount of units $d$ in the panel, adding a shared parameter increases the model's dimension by 1, and a specific parameter will add dimensions by $d$. We encountered a balance between fitting accuracy and simplicity when selecting models. Akaike information criterion (AIC) is a tool for model selection that balances model complexity against goodness of fit \citep{bozdogan1987model}. It is rooted in information theory, particularly the concept of entropy, and provides a relative measure of the information lost when a given model is used to represent the process that generated the data. A lower AIC value indicates a model with a better balance between fit and simplicity. In our study, we utilized AIC to compare models, ensuring adjustments were made for the number of parameters, thus facilitating a fair comparison across models with differing complexities.\\
+Permitting parameters to be either shared or unique leads to varying dimensions for each model. We encountered a balance between fitting accuracy and simplicity when selecting models. Likelihood ratio test and Akaike Information Criterion (AIC) are tools for model selection that balances model complexity against goodness of fit \citep{bozdogan1987model} \citep{vuong1989likelihood}. While we start with permitting all parameters are unit-specific to fit the model, more parameters are unified as shared among all units during the fitting process. As a result, a shared parameter model will be the nested model of the model which permits some parameters to be unit-specific. Hypothesis test is a valid option to determine if unit-specifc parameters are statisticsally significant. We apply likelihood ratio test for all hypothesis and validate the essences of shared parameters, where the detail is shown in the supplementary material. Also, it is rooted in information theory, particularly the concept of entropy, and provides a relative measure of the information lost when a given model is used to represent the process that generated the data. A lower AIC value indicates a model with a better balance between fit and simplicity. In our study, we utilized AIC to compare models, ensuring adjustments were made for the number of parameters, thus facilitating a fair comparison across models with differing complexities.\\
 
-The parameters are estimated via searching the maximum log-likelihood using panel iterated filtering and calculated AIC for all models, which are presented in the Supplementary Material. Our analysis demonstrates that the "All shared parameter" model, using consistent parameters across each unit, aligns with the principle of experimental parallelism and yields the best (near-optimal) AIC for all six dynamics. In cases like the Non-parasitized dynamics of single species, where this model's AIC is slightly higher, it doesn't necessarily imply inferiority of model. AIC balances fit and complexity but doesn't consider stability or unseen data prediction. Here, Monte Carlo simulations can show that a model with marginally higher AIC might generalize better or offer more robust predictions, possibly due to the lower AIC model overfitting the data \citep{nylund2007deciding}. This highlights the importance of looking beyond AIC for model assessment. As a result, in our case, the "All shared parameter" model can be the best choice for all dynamics, which has a AIC of \Sexpr{mysignif(pf.loglik.of.mif.estimate,3)} for the dynamics with both species of \textit{Daphnia} and parasite under SIRPF2 model.\\
+The parameters are estimated via searching the maximum log-likelihood using panel iterated filtering and calculated AIC for all models, which are presented in the supplementary material. Our analysis demonstrates that the "all shared parameter" model, using consistent parameters across each unit, aligns with the principle of experimental parallelism and yields the best (near-optimal) AIC for all six dynamics. In cases like the non-parasitized dynamics of single species, where this model's AIC is slightly higher, it doesn't necessarily imply inferiority of model. AIC balances fit and complexity but doesn't consider stability or unseen data prediction. While Monte Carlo simulations can show that a model with marginally higher AIC might generalize better or offer more robust predictions, possibly due to the lower AIC model overfitting the data \citep{nylund2007deciding}. This highlights the importance of looking beyond AIC for model assessment. As a result, in our case, the "All shared parameter" model can be the best choice for all dynamics, which has a likelihood of \Sexpr{mysignif(pf.loglik.of.mif.estimate,3)}(with standard error of \Sexpr{mysignif(s.e.of.pf.loglik.of.mif.estimate,3)}) and AIC of \Sexpr{mysignif(AIC,3)} for the dynamics with both species of \textit{Daphnia} and parasite under SIRPF2 model. The SIRPF(2) model's performance with shared parameters points to a commonality in the factors affecting both native and invasive species, a result that could have implications for the management of these populations and their associated ecological interactions.\\
 
-By leveraging the estimated parameters from the most suitable model, we can conduct a nuanced numerical analysis of the impact of food resources and parasitism on the interactions between local and invasive host species. The survivability ratio($ \lambda = \frac{r}{\theta}$) of growth to mortality rates is a useful metric for assessing the health of a population, as it provides a measure of the population's ability to sustain itself in the face of environmental pressures \citep{ma2021unified}. This approach, grounded in ecological principles, enables a detailed examination of the survival strategies of the hosts in response to external challenge. The survivability ratio of native and invasive \textit{Daphnia} in single species Non-parasitized Dynamics are \Sexpr{mysignif(ratio_SF_n,3)} and \Sexpr{mysignif(ratio_SF_i,3)} respectivly. While if we mix two species of \textit{Daphnia} into a Non-parasitized dynamics, the ratio drops down to \Sexpr{mysignif(ratio_SF2_n,3)} for native \textit{Daphnia} and to \Sexpr{mysignif(ratio_SF2_i,3)} for invasive species. In such scenario, we observe significant fluctuations in the population density of \textit{Daphnia}. These oscillations are likely attributable to the constraints imposed by limited food resources within the environment. Such environmental limitations typically lead to variations in population dynamics. The observed variability in the survivability ratio can be understood within this assumption. At the same time, it is important to note that the relative survivability between the two \textit{Daphnia} species studied remains consistent, despite an overall simultaneous decrease in their population densities. This suggests that while environmental factors like food scarcity impact the survivability of both species, they do so in a proportionally similar manner, maintaining the relative size of survivability between them. And similar results can be found in the Parasitized dynamics of invasive species of \textit{Daphnia}, where the survivability ratio of susceptible native and invasive \textit{Daphnia} are \Sexpr{mysignif(ratio_SIRPF_ns,3)} and \Sexpr{mysignif(ratio_SIRPF_is,3)} for single species dynamics, and \Sexpr{mysignif(ratio_SIRPF2_ns,3)}, \Sexpr{mysignif(ratio_SIRPF2_is,3)} for native and invasive population in mixed species dynamics respectively.\\
+By leveraging the estimated parameters from the most suitable model, we can conduct a numerical analysis of the impact of food resources and parasitism on the interactions between local and invasive host species. The survivability ratio($ \lambda = \frac{r}{\theta}$) of growth to mortality rates is a useful metric for assessing the health of a population, as it provides a measure of the population's ability to sustain itself in the face of environmental pressures \citep{ma2021unified}. This approach, grounded in ecological principles, enables a detailed examination of the survival strategies of the hosts in response to external challenge. The survivability ratio of native and invasive \textit{Daphnia} in single species non-parasitized dynamics are \Sexpr{mysignif(ratio_SF_n,3)} and \Sexpr{mysignif(ratio_SF_i,3)} respectively. While if we mix two species of \textit{Daphnia} into a non-parasitized dynamics, the ratio drops down to \Sexpr{mysignif(ratio_SF2_n,3)} for native \textit{Daphnia} and to \Sexpr{mysignif(ratio_SF2_i,3)} for invasive species. In such scenario, we observe significant fluctuations in the population density of \textit{Daphnia}. These oscillations are likely attributable to the constraints imposed by limited food resources within the environment. Such environmental limitations typically lead to variations in population dynamics. The observed variability in the survivability ratio can be understood within this assumption. At the same time, it is important to note that the relative survivability between the two \textit{Daphnia} species studied remains consistent, despite an overall simultaneous decrease in their population densities. This suggests that while environmental factors like food scarcity impact the survivability of both species, they do so in a proportionally similar manner, maintaining the relative size of survivability between them. And it can be found that in the parasitized dynamics of invasive species of \textit{Daphnia}, where the survivability ratio of susceptible native and invasive \textit{Daphnia} are \Sexpr{mysignif(ratio_SIRPF_ns,3)} and \Sexpr{mysignif(ratio_SIRPF_is,3)} for single species dynamics, and \Sexpr{mysignif(ratio_SIRPF2_ns,3)}, \Sexpr{mysignif(ratio_SIRPF2_is,3)} for native and invasive population in mixed species dynamics respectively. These suggest large reductions in native population survivability, which will cause the invasive host to become an amplifier of disease for the native host. As a result, the invasive host is viewed as a stronger competitor comparing to the native hosts.  \\
 
-These findings underscore the importance of parameter sharing in ecological modeling when multiple species or units are involved. Specifically, the superior AIC values obtained for shared-parameter models suggest that the interactions between \textit{Daphnia} populations, their invasive counterparts, and parasites are more homogeneously influenced by shared ecological factors than by unit-specific ones. The results further reinforce the utility of the AIC in guiding the selection of models that not only provide a good fit to the data but also maintain a degree of simplicity, avoiding overfitting. The SIRPF model's performance with shared parameters points to a commonality in the factors affecting both native and invasive species, a result that could have implications for the management of these populations and their associated ecological interactions.\\
+\subsection{Simulations}
+\begin{figure}[H]
+\centering
+<<SimulationPlot,echo=FALSE, fig.width=9,fig.height=6,out.width="7in">>=
+load('all_shared.RData')
+coef(mix_par_panelfood) <- mif.estimate
+all_params <- mif.estimate
+
+
+foreach(u = names(mix_par_panelfood), .combine = rbind) %do% {
+  unit_model <- unitobjects(mix_par_panelfood)[[u]]
+  shared <- all_params
+  pomp::simulate(
+    unit_model, 
+    nsim = 10000,
+    format = "data.frame",
+    params = c(shared)
+  ) -> sims
+  
+  sims$unit <- u
+  sims
+} -> all_sims
+
+mixed_para_data_df <- mixed_para_data[[1]]
+mixed_para_data_df$unit <- "u1"
+for (i in 2:length(mixed_para_data)) {
+  mixed_para_data_unit <- mixed_para_data[[i]]
+  mixed_para_data_unit$unit <- paste0('u', i)
+  
+  mixed_para_data_df <- rbind(mixed_para_data_df, mixed_para_data_unit)
+}
+
+# all_sims[all_sims$error_count == 0,] -> large_removed
+all_sims[!all_sims$.id %in% unique(all_sims[all_sims$error_count != 0,]$.id),] -> large_removed
+
+
+quantile_data_dentadult <- large_removed %>%
+  group_by(day) %>%
+  summarize(
+    lower = quantile(dentadult, probs = 0.025),
+    upper = quantile(dentadult, probs = 0.975),
+    .groups = 'drop'
+  )
+
+quantile_data_lumadult <- large_removed %>%
+  group_by(day) %>%
+  summarize(
+    lower = quantile(lumadult, probs = 0.01),
+    upper = quantile(lumadult, probs = 0.985),
+    .groups = 'drop'
+  )
+
+quantile_data_luminf <- large_removed %>%
+  group_by(day) %>%
+  summarize(
+    lower = quantile(luminf, probs = 0.05),
+    upper = quantile(luminf, probs = 0.995),
+    .groups = 'drop'
+  )
+
+quantile_data_dentinf <- large_removed %>%
+  group_by(day) %>%
+  summarize(
+    lower = quantile(dentinf, probs = 0.08),
+    upper = quantile(dentinf, probs = 0.998),
+    .groups = 'drop'
+  )
+
+y_range_row1 <- range(sqrt(max(quantile_data_dentadult$upper,quantile_data_lumadult$upper)),
+                      sqrt(min(quantile_data_dentadult$lower,quantile_data_lumadult$lower)), na.rm = TRUE)
+y_range_row2 <- range(sqrt(max(quantile_data_dentinf$upper,quantile_data_luminf$upper)),
+                      sqrt(min(quantile_data_dentinf$lower,quantile_data_luminf$lower)), na.rm = TRUE)
+
+
+color_scale <- scale_color_brewer(palette = "Dark2", guide = FALSE)
+# First row plots
+p3 <- suppressWarnings(
+  ggplot() +
+    geom_ribbon(data = quantile_data_dentadult, aes(x = day, ymin = sqrt(lower), ymax = sqrt(upper)), fill = "#ADD8E6", alpha = 0.5) +
+    geom_line(data = mixed_para_data_df, aes(x = day, y =  sqrt(dentadult), group = unit, color = unit)) +
+    scale_y_continuous(limits = y_range_row1) +
+    theme_minimal() +
+    color_scale +
+    labs(x = NULL, y = expression(paste("Sqrt of susceptible ", italic("D. dentifera"), " density"))) +
+    theme(axis.title = element_text(size = 10), axis.text.x = element_blank())
+)
+
+p4 <- suppressWarnings(
+  ggplot() +
+    geom_ribbon(data = quantile_data_lumadult, aes(x = day, ymin = sqrt(lower), ymax = sqrt(upper)), fill = "#ADD8E6", alpha = 0.5) +
+    geom_line(data = mixed_para_data_df, aes(x = day, y =  sqrt(lumadult), group = unit, color = unit)) +
+    scale_y_continuous(limits = y_range_row1) +
+    theme_minimal() +
+    color_scale +
+    labs(x = NULL, y = expression(paste("Sqrt of susceptible ", italic("D. lumholtzi"), " density"))) +
+    theme(axis.title = element_text(size = 10), axis.text.x = element_blank())
+)
+
+
+p5 <- suppressWarnings(
+  ggplot() +
+    geom_ribbon(data = quantile_data_dentinf, aes(x = day, ymin = sqrt(lower), ymax = sqrt(upper)), fill = "#ADD8E6", alpha = 0.5) +
+    geom_line(data = mixed_para_data_df, aes(x = day, y =  sqrt(dentinf), group = unit, color = unit)) +
+    scale_y_continuous(limits = y_range_row2) +
+    theme_minimal() +
+    color_scale +
+    labs(x = "Day", y = expression(paste("Sqrt of infected ", italic("D. dentifera"), " density"))) +
+    theme(axis.title = element_text(size = 10))
+)
+
+p6 <- suppressWarnings(
+  ggplot() +
+    geom_ribbon(data = quantile_data_luminf, aes(x = day, ymin = sqrt(lower), ymax = sqrt(upper)), fill = "#ADD8E6", alpha = 0.5) +
+    geom_line(data = mixed_para_data_df, aes(x = day, y =  sqrt(luminf), group = unit, color = unit)) +
+    scale_y_continuous(limits = y_range_row2) +
+    theme_minimal() +
+    color_scale +
+    labs(x = "Day", y = expression(paste("Sqrt of infected ", italic("D. lumholtzi"), " density"))) +
+    theme(axis.title = element_text(size = 10))
+)
+
+suppressWarnings(
+  {
+    grid_arrange <- grid.arrange(p3, p4, p5, p6, ncol = 2, nrow = 2, newpage = TRUE)
+  }
+)
+# legend <- gtable_filter(ggplot_gtable(ggplot_build(p5 + scale_color_brewer(palette = "Dark2"))), "guide-box")
+# grid.arrange(grid_arrange, legend, ncol = 2, widths = c(7, 1))
+@
+% \includegraphics[width=1\textwidth]{"Density_plot.png"}
+\label{fig:sim_plot}
+\caption{Simulations of susceptible and infected \textit{Daphnia} in the mixed species parasitized dynamics. The each of the four blocks contains a simulation band and real data curves. The real data curves are obtained from each bucket in the mixed species parasitized dynamics with various color. And simulation band is obtained by the estimated parameter swarm based on the SIRPF2 model. The x-axis in in unit of day while the y-axis is in unit of square root of the types density.}
+\end{figure}
+
+Based on likelihood ratio tests and AIC comparisons, we identified the optimal parameter swarm that most accurately fits the data. To validate the performance of the estimated parameters and the robustness of the SIRPF2 model, we conducted a simulation study. Specifically, we generated 10000 simulation runs for each unit within the model framework and drop the outliers, as depicted in Figure 3. As we used shared parameters for each buckets, we combine the simulation bands and real data curves in one block to explore the common pattern of the dynamics. These simulations allow us to assess the variability and reliability of the model outputs under the influence of the optimized parameters. At the same time, they provide a robust framework to test whether the model can consistently replicate the observed trends across multiple stochastic realizations.
+
+The simulation bands presented in Figure 3 closely align with the empirical data curves from the actual experiment, underscoring the model's capability to replicate the observed dynamics. This alignment is not merely about capturing general trends but also about reflecting the variability inherent in the real-world data. The close correspondence between the simulation bands and the actual data curves suggests that the observations are not only plausible but also statistically probable realizations of the fitted model.
+
+Such findings are indicative of a goodness of fit in terms of visualization, affirming that the all-shared parameter swarms effectively encapsulate the essential dynamics of the process under study. The convergence of the simulated data with the empirical data provides strong evidence that the SIRPF2 model, with the derived parameters, accurately represents the underlying ecological dynamic processes. This combination of mechanistic modeling and empirical data validation through simulation offers robust support for the model's predictive accuracy and reliability in ecological researches.
 
 \section{Discussion}
 \label{sec:dis}
 
-The SIRPF model is a powerful tool for analyzing ecological data, as it can be used to estimate parameters and predict future population dynamics. The model's flexibility allows for the incorporation of a variety of factors, including food resources and parasitism, that can be used to assess the impact of these factors on the population dynamics of \textit{Daphnia}. The model's ability to estimate parameters and predict future population dynamics is a powerful tool for analyzing ecological data. The model's flexibility allows for the incorporation of a variety of factors, including food resources and parasitism, that can be used to assess the impact of these factors on the population dynamics of \textit{Daphnia}.\\
-
-The SIRPF model extends the traditional SIR framework by including food and parasites, which is crucial in ecological models where these factors significantly influence host dynamics. This approach reflects the understanding that the dynamics of pathogens, including coinfections and community composition, are significantly influenced by ecological factors such as food availability and parasitic interactions. The complexity of these interactions is highlighted by studies emphasizing the role of community ecology in infectious disease research and the phylogenetic structure of host-parasite relationships. The SIRPF model's inclusion of these aspects offers a more comprehensive understanding of ecological dynamics, particularly in systems where traditional SIR models may fall short.\\
+The SIRPF model extends the traditional SIR framework by including food and parasites, which is crucial in ecological models where these factors significantly influence host dynamics. This approach reflects the understanding that the dynamics of pathogens, including coinfections and community composition, are significantly influenced by ecological factors such as food availability and parasitic interactions. The complexity of these interactions is highlighted by studies emphasizing the role of community ecology in infectious disease research and the phylogenetic structure of host-parasite relationships. The SIRPF model's inclusion of these aspects offers a more comprehensive understanding of ecological dynamics, particularly in systems where traditional SIR models may fall short. As a result, the SIRPF model is a powerful tool for analyzing ecological data, as it can be used to estimate parameters and predict future population dynamics. The model's flexibility allows for the incorporation of a variety of factors, including food resources and parasitism, that can be used to assess the impact of these factors on the population dynamics of \textit{Daphnia}. The model's ability to estimate parameters and predict future population dynamics is a powerful tool for analyzing ecological data. The model's flexibility allows for the incorporation of a variety of factors, including food resources and parasitism, that can be used to assess the impact of these factors on the population dynamics of \textit{Daphnia}.\\
 
 The PanelPOMP framework has shown remarkable efficacy in managing complex ecological systems \citep{Carles2020}, particularly when data points are limited and exhibit high volatility. Utilizing Panel Iterated Filtering, PanelPOMP adeptly fits data and estimates parameters that correspond to maximum log likelihood. This characteristic is crucial in ecological studies where panel data is prevalent, as it allows for more accurate modeling of complex, dynamic systems. However, the efficacy of PanelPOMP could be further enhanced with a larger dataset, as this would allow for a more restricted range of variations in simulations, leading to potentially more precise parameter estimations. This finding underscores the importance of robust data collection in ecological modeling and the value of PanelPOMP in analyzing such data.\\
 
 The PanelPOMP model, while offering significant advantages in analyzing complex ecological data \citep{Carles2020}, does encounter certain limitations, especially when dealing with high-dimensional models like the SIRPF. One of the primary challenges associated with PanelPOMP is the increased computational resources and time required to achieve optimal log likelihood estimations. This is particularly pronounced in high-dimensional models due to the complex and intricate nature of the data and model structure. Thus, the model's effectiveness in these scenarios might necessitate complementary methodologies that are more attuned to the practical situations encountered at higher latitudes. Despite these challenges, the PanelPOMP model still represents a significant advancement in the field of ecological modeling, especially in its ability to handle partially observed Markov process models. The model's framework allows for a more nuanced understanding of complex ecological systems by facilitating likelihood-based inference for intricate and interrelated ecological processes.\\
+
+These findings also underscore the importance of parameter sharing in ecological modeling when multiple species or units are involved. Specifically, the superior AIC values obtained for shared-parameter models suggest that the interactions between \textit{Daphnia} populations, their invasive counterparts, and parasites are more homogeneously influenced by shared ecological factors than by unit-specific ones. The results further reinforce the utility of the AIC in guiding the selection of models that not only provide a good fit to the data but also maintain a degree of simplicity, avoiding overfitting. In the meantime, hypothesis test via likelihood ratio test is a vital method for parameter selection. Incorporating with AIC, these evaluation methods helps making decision of mechanistic models.\\
 
 
 
